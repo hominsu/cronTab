@@ -1,54 +1,47 @@
 package master
 
 import (
-	"log"
-	"net"
-	"net/http"
-	"time"
+	"cronTab/master/config"
+	"flag"
+	"github.com/gin-gonic/gin"
+	"github.com/golang/glog"
 )
 
-type ApiServer struct {
-	httpServer *http.Server
+type Engine struct {
+	*gin.Engine
 }
 
 var (
-	// G_apiServer 单例对象
-	G_apiServer *ApiServer
+	// GapiServer 单例对象
+	GapiServer *Engine
 )
 
-func handlerJobSave(w http.ResponseWriter, r *http.Request) {
+func handlerRegister() (engine *gin.Engine) {
+	e := Engine{gin.Default()}
 
+	e.Handle("DELETE", "/logout", handlerJobSave)
+
+	return e.Engine
 }
 
-func initApiServer() (err error) {
-	// 配置路由
-	mux := http.NewServeMux()
-	mux.HandleFunc("/job/save", handlerJobSave)
+func InitApiServer() {
+	// 设置 gin 为 release 模式
+	//gin.SetMode(gin.ReleaseMode)
 
-	// 启动 TCP 监听
-	listener, err := net.Listen("tcp", ":8070")
-	if err != nil {
-		return err
-	}
+	flag.Parse()
+	defer glog.Flush()
 
-	// 创建 http 服务
-	httpServer := &http.Server{
-		Handler:      mux,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
-	}
+	// 注册 handler
+	engine := handlerRegister()
 
-	G_apiServer = &ApiServer{
-		httpServer: httpServer,
-	}
-
-	// 启动服务端
-	go func() {
-		err := httpServer.Serve(listener)
-		if err != nil {
-			log.Fatal(err)
+	// 监听
+	go func(engine *gin.Engine) {
+		if err := engine.Run(":" + config.Basic.WebPort()); err != nil {
+			glog.Fatal(err)
 		}
-	}()
+	}(engine)
 
-	return nil
+	// 赋值单例模式
+	GapiServer = &Engine{engine}
+
 }

@@ -1,6 +1,9 @@
 package main
 
-import "runtime"
+import (
+	"cronTab/master"
+	"runtime"
+)
 
 func initEnv() {
 	// 设置线程数等于核心数
@@ -12,4 +15,5 @@ func main() {
 	initEnv()
 
 	// 启动 Http 服务
+	master.InitApiServer()
 }
