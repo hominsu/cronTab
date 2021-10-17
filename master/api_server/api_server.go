@@ -1,8 +1,7 @@
-package master
+package api_server
 
 import (
 	"cronTab/master/config"
-	"flag"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 )
@@ -19,7 +18,7 @@ var (
 func handlerRegister() (engine *gin.Engine) {
 	e := Engine{gin.Default()}
 
-	e.Handle("DELETE", "/logout", handlerJobSave)
+	e.Handle("POST", "/job-save", handlerJobSave)
 
 	return e.Engine
 }
@@ -28,15 +27,14 @@ func InitApiServer() {
 	// 设置 gin 为 release 模式
 	//gin.SetMode(gin.ReleaseMode)
 
-	flag.Parse()
 	defer glog.Flush()
 
-	// 注册 handler
+	// 注册 api_server
 	engine := handlerRegister()
 
 	// 监听
 	go func(engine *gin.Engine) {
-		if err := engine.Run(":" + config.Basic.WebPort()); err != nil {
+		if err := engine.Run(":" + config.GConfig.ApiPort); err != nil {
 			glog.Fatal(err)
 		}
 	}(engine)

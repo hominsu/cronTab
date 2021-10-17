@@ -1,62 +1,36 @@
 package config
 
 import (
-	"log"
-	"os"
-	"reflect"
-	"strconv"
+	"encoding/json"
+	"io/ioutil"
 )
+
+type Config struct {
+	ApiPort         string   `json:"api_port"`
+	EtcdEndpoints   []string `json:"etcd_endpoints"`
+	EtcdDailTimeout int      `json:"etcd_dail_timeout"`
+}
 
 var (
-	Basic = &basic{}
-
-	env = &envDef{
-		basicWebPort: "CRON_TAB_BASIC_WEB_PORT",
-	}
+	GConfig *Config
 )
 
-func init() {
-	typeOfEnv := reflect.TypeOf(*env)
-	valueOfEnv := reflect.ValueOf(*env)
-
-	for i := 0; i < typeOfEnv.NumField(); i++ {
-		if value := os.Getenv(valueOfEnv.Field(i).String()); value != "" {
-			setEnv(typeOfEnv.Field(i).Name, value)
-		} else {
-			envError("Env should not be empty")
-		}
-	}
-}
-
-func setEnv(key, value string) {
-	switch key {
-	case "basicWebPort":
-		Basic.webPort = value
-	default:
-		envError("Unknown Env Name")
-	}
-}
-
-func strToInt(value string) int {
-	ret, err := strconv.Atoi(value)
+// InitialConfig 加载配置
+func InitialConfig(filename string) (err error) {
+	// 读配置文件
+	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
-		envError(err.Error())
+		return err
 	}
-	return ret
-}
 
-func envError(err string) {
-	log.Fatalln(err)
-}
+	// json 反序列化
+	conf := &Config{}
+	if err = json.Unmarshal(bytes, conf); err != nil {
+		return err
+	}
 
-type envDef struct {
-	basicWebPort string
-}
+	// 单例赋值
+	GConfig = conf
 
-type basic struct {
-	webPort string
-}
-
-func (b basic) WebPort() string {
-	return b.webPort
+	return nil
 }
