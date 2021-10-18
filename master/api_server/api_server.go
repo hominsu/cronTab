@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 	"net/http"
+	"path"
 )
 
 type Engine struct {
@@ -25,14 +26,14 @@ func handlerRegister() (engine *gin.Engine) {
 	e.Handle("POST", "/job/kill", handlerJobKill)
 
 	// 静态
-	//e.StaticFS("/web", http.Dir(config.GConfig.WebRoot))
+	e.Static("/static", config.GConfig.WebRoot)
 	//fileServer := http.StripPrefix("/static/", http.FileServer(http.Dir("./web")))
 	//handler := func(c *gin.Context) {
 	//	fileServer.ServeHTTP(c.Writer, c.Request)
 	//}
 	//e.GET("/*filepath", handler)
 
-	e.LoadHTMLGlob("./web/*")
+	e.LoadHTMLGlob(path.Join(config.GConfig.WebRoot, "html/*"))
 	e.Handle("GET", "/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", gin.H{})
 	})
