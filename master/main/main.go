@@ -7,6 +7,7 @@ import (
 	"flag"
 	"github.com/golang/glog"
 	"runtime"
+	"time"
 )
 
 var (
@@ -26,10 +27,10 @@ func initEnv() {
 }
 
 func main() {
-	defer glog.Flush()
-
 	// 初始化命令行参数
 	initArgs()
+
+	defer glog.Flush()
 
 	// 初始化线程
 	initEnv()
@@ -40,8 +41,15 @@ func main() {
 	}
 
 	// 任务管理
-	etcdOps.InitJobMgr()
+	if err := etcdOps.InitJobMgr(); err != nil {
+		glog.Fatal(err)
+	}
+	defer etcdOps.CloseEtcdConn()
 
 	// 启动 Http 服务
 	api_server.InitApiServer()
+
+	for {
+		time.Sleep(time.Second)
+	}
 }
