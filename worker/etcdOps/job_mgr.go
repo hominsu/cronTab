@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+// CreateJobLock 创建任务执行锁
+func (jobMgr JobMgr) CreateJobLock(jobName string) *JobLock {
+	// 返回一把锁
+	return InitJobLock(jobName, jobMgr.kv, jobMgr.lease)
+}
+
+// WatchJob 监听任务
 func (jobMgr *JobMgr) WatchJob() error {
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	defer cancel()
@@ -40,6 +47,7 @@ func (jobMgr *JobMgr) WatchJob() error {
 	return nil
 }
 
+// 监听
 func watch(jobMgr *JobMgr, watchStartRevision int64) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()

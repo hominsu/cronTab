@@ -12,4 +12,7 @@ const (
 
 	// JobEventDelete 删除任务事件
 	JobEventDelete int = 2
+
+	// JobLockDir 锁目录
+	JobLockDir = "/cron/lock/"
 )
