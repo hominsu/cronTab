@@ -12,11 +12,6 @@ type Engine struct {
 	*gin.Engine
 }
 
-var (
-	// GapiServer 单例对象
-	GapiServer *Engine
-)
-
 func handlerRegister() (engine *gin.Engine) {
 	e := Engine{gin.Default()}
 
@@ -51,13 +46,8 @@ func InitApiServer() {
 	engine := handlerRegister()
 
 	// 监听
-	go func(engine *gin.Engine) {
-		if err := engine.Run(":" + config.GConfig.ApiPort); err != nil {
-			glog.Fatal(err)
-		}
-	}(engine)
-
-	// 赋值单例模式
-	GapiServer = &Engine{engine}
+	if err := engine.Run(":" + config.GConfig.ApiPort); err != nil {
+		glog.Fatal(err)
+	}
 
 }

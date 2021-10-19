@@ -7,7 +7,6 @@ import (
 	"flag"
 	"github.com/golang/glog"
 	"runtime"
-	"time"
 )
 
 var (
@@ -48,8 +47,4 @@ func main() {
 
 	// 启动 Http 服务
 	api_server.InitApiServer()
-
-	for {
-		time.Sleep(time.Second)
-	}
 }

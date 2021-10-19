@@ -3,7 +3,6 @@ package etcdOps
 import (
 	"context"
 	"cronTab/common"
-	"encoding/json"
 	"errors"
 	"go.etcd.io/etcd/client/v3"
 	"time"
@@ -20,7 +19,7 @@ func (jobMgr *JobMgr) SaveJob(job *common.Job) (*common.Job, error) {
 	jobKey := common.JobSaveDir + job.Name
 
 	// 任务信息
-	jobValue, err := json.Marshal(job)
+	jobValue, err := job.JobMarshal()
 	if err != nil {
 		return nil, err
 	}
@@ -33,13 +32,12 @@ func (jobMgr *JobMgr) SaveJob(job *common.Job) (*common.Job, error) {
 
 	// 如果是更新，返回旧值
 	if putResp.PrevKv != nil {
-		oldJob := &common.Job{}
 		// 对旧值进行反序列化
-		if err = json.Unmarshal(putResp.PrevKv.Value, oldJob); err != nil {
-			// 如果旧值非法，不影响，因为 Put 成功了
+		if oldJob, err := common.JobUnmarshal(putResp.PrevKv.Value); err != nil {
 			return nil, nil
+		} else {
+			return oldJob, nil
 		}
-		return oldJob, nil
 	} else {
 		return nil, nil
 	}
@@ -61,13 +59,12 @@ func (jobMgr *JobMgr) DeleteJob(name string) (*common.Job, error) {
 
 	// 如果删除的 key 存在
 	if delResp.PrevKvs != nil {
-		oldJob := &common.Job{}
 		// 对旧值进行反序列化
-		if err = json.Unmarshal(delResp.PrevKvs[0].Value, oldJob); err != nil {
-			// 如果旧值非法，不影响，因为 Del 成功了
-			return nil, nil
+		if oldJob, err := common.JobUnmarshal(delResp.PrevKvs[0].Value); err != nil {
+			return nil, err
+		} else {
+			return oldJob, nil
 		}
-		return oldJob, nil
 	} else {
 		return nil, errors.New("the deleted key does not exist")
 	}
@@ -90,9 +87,9 @@ func (jobMgr *JobMgr) ListJobs() ([]*common.Job, error) {
 	var jobs []*common.Job
 	// 遍历所有任务，反序列化
 	for _, kv := range getResp.Kvs {
-		job := &common.Job{}
 		// 对旧值进行反序列化, 这里容忍了错误
-		if err = json.Unmarshal(kv.Value, job); err != nil {
+		job, err := common.JobUnmarshal(kv.Value)
+		if err != nil {
 			// 值非法
 			continue
 		}

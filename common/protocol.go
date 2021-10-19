@@ -13,6 +13,25 @@ type Job struct {
 	CronExpr string `json:"cron_expr"` // cron 表达式
 }
 
+// JobMarshal 序列化 Job
+func (j Job) JobMarshal() ([]byte, error) {
+	if bytes, err := json.Marshal(j); err != nil {
+		return nil, err
+	} else {
+		return bytes, nil
+	}
+}
+
+// JobUnmarshal 反序列化 Job
+func JobUnmarshal(bytes []byte) (*Job, error) {
+	job := &Job{}
+	// 对job进行反序列化
+	if err := json.Unmarshal(bytes, job); err != nil {
+		return nil, err
+	}
+	return job, nil
+}
+
 // Response http 接口应答
 type Response struct {
 	Errno int         `json:"errno"`
