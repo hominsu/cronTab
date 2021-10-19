@@ -68,6 +68,11 @@ func main() {
 	}
 	defer etcdOps.CloseEtcdConn()
 
+	// 启动执行器
+	if err = scheduler.InitExecutor(); err != nil {
+		glog.Fatal(err)
+	}
+
 	// 启动调度
 	if err = scheduler.InitScheduler(); err != nil {
 		glog.Fatal(err)
