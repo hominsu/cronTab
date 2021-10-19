@@ -6,4 +6,10 @@ const (
 
 	// JobKillDir 任务强杀任务
 	JobKillDir = "/cron/kill/"
+
+	// JobEventSave 保存任务事件
+	JobEventSave int = 1
+
+	// JobEventDelete 删除任务事件
+	JobEventDelete int = 2
 )

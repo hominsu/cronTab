@@ -3,6 +3,7 @@ package main
 import (
 	"cronTab/worker/config"
 	"cronTab/worker/etcdOps"
+	"cronTab/worker/scheduler"
 	"flag"
 	"github.com/golang/glog"
 	"os"
@@ -28,6 +29,8 @@ func initEnv() {
 }
 
 func main() {
+	var err error
+
 	// 初始化命令行参数
 	initArgs()
 
@@ -55,15 +58,25 @@ func main() {
 	initEnv()
 
 	// 加载配置
-	if err := config.InitialConfig(confFile); err != nil {
+	if err = config.InitialConfig(confFile); err != nil {
 		glog.Fatal(err)
 	}
 
 	// 任务管理
-	if err := etcdOps.InitJobMgr(); err != nil {
+	if err = etcdOps.InitJobMgr(); err != nil {
 		glog.Fatal(err)
 	}
 	defer etcdOps.CloseEtcdConn()
+
+	// 启动调度
+	if err = scheduler.InitScheduler(); err != nil {
+		glog.Fatal(err)
+	}
+
+	// 启动监听
+	if err = etcdOps.GJobMgr.WatchJob(); err != nil {
+		glog.Fatal(err)
+	}
 
 	// 阻塞，等待退出
 	<-done
