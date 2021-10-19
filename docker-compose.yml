@@ -1,0 +1,35 @@
+version: '3.4'
+
+services:
+  etcd:
+    image: gcr.io/etcd-development/etcd:v3.4.17-arm64
+    container_name: etcd-gcr-v3.4.17
+    restart: always
+    environment:
+      ETCD_UNSUPPORTED_ARCH: "arm64"
+    command: "/usr/local/bin/etcd
+    --name s1 \
+    --data-dir /etcd-data \
+    --listen-client-urls http://0.0.0.0:2379 \
+    --advertise-client-urls http://0.0.0.0:2379 \
+    --listen-peer-urls http://0.0.0.0:2380 \
+    --initial-advertise-peer-urls http://0.0.0.0:2380 \
+    --initial-cluster s1=http://0.0.0.0:2380 \
+    --initial-cluster-token tkn \
+    --initial-cluster-state new \
+    --log-level info \
+    --logger zap \
+    --log-outputs stderr"
+    volumes:
+      - ./etcd-data:/etcd-data
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    networks:
+      net:
+        aliases:
+          - etcd
+
+networks:
+  net:
+    driver: bridge
