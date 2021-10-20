@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/gorhill/cronexpr"
@@ -38,6 +39,11 @@ func JobUnmarshal(bytes []byte) (*Job, error) {
 // ExtractJobName 从 etcd 中的 key 提取任务名
 func ExtractJobName(jobKey string) string {
 	return strings.TrimPrefix(jobKey, JobSaveDir)
+}
+
+// ExtractKillName 从 etcd 中的 key 提取任务名
+func ExtractKillName(killKey string) string {
+	return strings.TrimPrefix(killKey, JobKillDir)
 }
 
 // Response http 接口应答
@@ -101,18 +107,24 @@ func BuildJobSchedulerPlan(job *Job) (*JobSchedulerPlan, error) {
 
 // JobExecInfo 任务执行状态
 type JobExecInfo struct {
-	Job      *Job      // 任务信息
-	PlanTime time.Time // 计划调度时间
-	RealTime time.Time // 实际调度时间
+	Job        *Job               // 任务信息
+	PlanTime   time.Time          // 计划调度时间
+	RealTime   time.Time          // 实际调度时间
+	CancelCtx  context.Context    // 任务 command 的上下文
+	CancelFunc context.CancelFunc // 用于取消 command 执行的函数
 }
 
 // BuildJobExecInfo 构造执行状态信息
 func BuildJobExecInfo(jobSchedulerPlan *JobSchedulerPlan) *JobExecInfo {
-	return &JobExecInfo{
+	jobExecInfo := &JobExecInfo{
 		Job:      jobSchedulerPlan.Job,
 		PlanTime: jobSchedulerPlan.NextTime, // 计划调度时间
 		RealTime: time.Now(),                //真实调度时间
 	}
+
+	jobExecInfo.CancelCtx, jobExecInfo.CancelFunc = context.WithCancel(context.TODO())
+
+	return jobExecInfo
 }
 
 // JobExecResult 任务执行结果

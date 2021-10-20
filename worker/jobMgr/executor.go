@@ -1,12 +1,19 @@
-package scheduler
+package jobMgr
 
 import (
-	"context"
 	"cronTab/common"
-	"cronTab/worker/etcdOps"
 	"github.com/golang/glog"
+	"math/rand"
 	"os/exec"
 	"time"
+)
+
+// Executor 任务执行
+type Executor struct {
+}
+
+var (
+	GExecutor *Executor
 )
 
 // InitExecutor 初始化执行器
@@ -19,11 +26,8 @@ func InitExecutor() error {
 // ExecJob 执行任务
 func (executor Executor) ExecJob(info *common.JobExecInfo) {
 	go func() {
-		ctx, cancel := context.WithCancel(context.TODO())
-		defer cancel()
-
 		// 初始化分布式锁
-		jobLock := etcdOps.GJobMgr.CreateJobLock(info.Job.Name)
+		jobLock := GJobMgr.CreateJobLock(info.Job.Name)
 
 		// 任务结果
 		result := &common.JobExecResult{
@@ -32,10 +36,13 @@ func (executor Executor) ExecJob(info *common.JobExecInfo) {
 			StartTime: time.Now(),      // 记录任务开始时间
 		}
 
+		// 随机随眠 (0ms ~ 100ms)
+		time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+
 		// 尝试上锁
 		err := jobLock.TryLock()
 		// 释放锁
-		defer func(jobLock *etcdOps.JobLock) {
+		defer func(jobLock *JobLock) {
 			if err := jobLock.UnLock(); err != nil {
 				glog.Warning(err)
 			}
@@ -49,7 +56,7 @@ func (executor Executor) ExecJob(info *common.JobExecInfo) {
 			result.StartTime = time.Now()
 
 			// 执行 shell 命令
-			cmd := exec.CommandContext(ctx, "/bin/bash", "-c", info.Job.Command)
+			cmd := exec.CommandContext(info.CancelCtx, "/bin/bash", "-c", info.Job.Command)
 
 			// 执行并捕获输出
 			output, err := cmd.CombinedOutput()

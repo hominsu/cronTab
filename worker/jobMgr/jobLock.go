@@ -1,4 +1,4 @@
-package etcdOps
+package jobMgr
 
 import (
 	"context"

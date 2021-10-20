@@ -2,8 +2,7 @@ package main
 
 import (
 	"cronTab/worker/config"
-	"cronTab/worker/etcdOps"
-	"cronTab/worker/scheduler"
+	"cronTab/worker/jobMgr"
 	"flag"
 	"github.com/golang/glog"
 	"os"
@@ -63,23 +62,28 @@ func main() {
 	}
 
 	// 任务管理
-	if err = etcdOps.InitJobMgr(); err != nil {
+	if err = jobMgr.InitJobMgr(); err != nil {
 		glog.Fatal(err)
 	}
-	defer etcdOps.CloseEtcdConn()
+	defer jobMgr.CloseEtcdConn()
 
 	// 启动执行器
-	if err = scheduler.InitExecutor(); err != nil {
+	if err = jobMgr.InitExecutor(); err != nil {
 		glog.Fatal(err)
 	}
 
 	// 启动调度
-	if err = scheduler.InitScheduler(); err != nil {
+	if err = jobMgr.InitScheduler(); err != nil {
 		glog.Fatal(err)
 	}
 
-	// 启动监听
-	if err = etcdOps.GJobMgr.WatchJob(); err != nil {
+	// 启动任务监听
+	if err = jobMgr.GJobMgr.WatchJob(); err != nil {
+		glog.Fatal(err)
+	}
+
+	// 启动强杀监听
+	if err = jobMgr.GJobMgr.WatchKill(); err != nil {
 		glog.Fatal(err)
 	}
 

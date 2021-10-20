@@ -1,16 +1,15 @@
-package etcdOps
+package jobMgr
 
 import (
 	"context"
 	"cronTab/common"
-	"cronTab/worker/scheduler"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3"
 	"time"
 )
 
 // CreateJobLock 创建任务执行锁
-func (jobMgr JobMgr) CreateJobLock(jobName string) *JobLock {
+func (jobMgr *JobMgr) CreateJobLock(jobName string) *JobLock {
 	// 返回一把锁
 	return InitJobLock(jobName, jobMgr.kv, jobMgr.lease)
 }
@@ -34,7 +33,7 @@ func (jobMgr *JobMgr) WatchJob() error {
 		} else {
 			jobEvent := common.BuildJobEvent(common.JobEventSave, job)
 			// 任务同步给 scheduler(调度协程)
-			scheduler.GScheduler.PushJobEvent(jobEvent)
+			GScheduler.PushJobEvent(jobEvent)
 		}
 	}
 
@@ -42,13 +41,13 @@ func (jobMgr *JobMgr) WatchJob() error {
 	watchStartRevision := getResp.Header.Revision + 1
 
 	// 监听协程
-	go watch(jobMgr, watchStartRevision)
+	go watchJobFunc(jobMgr, watchStartRevision)
 
 	return nil
 }
 
-// 监听
-func watch(jobMgr *JobMgr, watchStartRevision int64) {
+// 监听任务变化函数
+func watchJobFunc(jobMgr *JobMgr, watchStartRevision int64) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
@@ -72,7 +71,37 @@ func watch(jobMgr *JobMgr, watchStartRevision int64) {
 				jobEvent = common.BuildJobEvent(common.JobEventDelete, &common.Job{Name: jobName})
 			}
 			// 推送事件给 scheduler(调度协程)
-			scheduler.GScheduler.PushJobEvent(jobEvent)
+			GScheduler.PushJobEvent(jobEvent)
+		}
+	}
+}
+
+// WatchKill 监听强杀任务
+func (jobMgr *JobMgr) WatchKill() error {
+	// 监听协程
+	go watchKillFunc(jobMgr)
+
+	return nil
+}
+
+// 监听强杀变化函数
+func watchKillFunc(jobMgr *JobMgr) {
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	// 监听 /cron/kill/ 目录的变化
+	watchChan := jobMgr.watcher.Watch(ctx, common.JobKillDir, clientv3.WithPrefix())
+
+	for watchResp := range watchChan {
+		for _, ev := range watchResp.Events {
+			switch ev.Type {
+			case mvccpb.PUT: // 杀死任务事件
+				jobName := common.ExtractKillName(string(ev.Kv.Key))
+				jobEvent := common.BuildJobEvent(common.JobEventKill, &common.Job{Name: jobName})
+				// 推送事件给 scheduler(调度协程)
+				GScheduler.PushJobEvent(jobEvent)
+			case mvccpb.DELETE: // kill 自动过期
+			}
 		}
 	}
 }
