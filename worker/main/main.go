@@ -3,6 +3,7 @@ package main
 import (
 	"cronTab/worker/config"
 	"cronTab/worker/jobMgr"
+	"cronTab/worker/logSink"
 	"flag"
 	"github.com/golang/glog"
 	"os"
@@ -58,6 +59,11 @@ func main() {
 
 	// 加载配置
 	if err = config.InitialConfig(confFile); err != nil {
+		glog.Fatal(err)
+	}
+
+	// 启动日志协程
+	if err = logSink.InitLogSink(); err != nil {
 		glog.Fatal(err)
 	}
 

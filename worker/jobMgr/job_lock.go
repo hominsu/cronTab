@@ -27,8 +27,8 @@ func InitJobLock(jobName string, kv clientv3.KV, lease clientv3.Lease) *JobLock 
 	}
 }
 
-// TryLock 尝试上锁
-func (jobLock *JobLock) TryLock() error {
+// tryLock 尝试上锁
+func (jobLock *JobLock) tryLock() error {
 	// 1. 创建租约
 	leaseGrantResp, err := jobLock.lease.Grant(context.TODO(), 5)
 	if err != nil {
@@ -113,8 +113,8 @@ func (jobLock *JobLock) revokeLease() error {
 	return nil
 }
 
-// UnLock 释放锁
-func (jobLock *JobLock) UnLock() error {
+// unLock 释放锁
+func (jobLock *JobLock) unLock() error {
 	if jobLock.isLocked == true {
 		if err := jobLock.revokeLease(); err != nil {
 			return err

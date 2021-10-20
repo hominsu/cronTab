@@ -24,7 +24,7 @@ func InitExecutor() error {
 }
 
 // ExecJob 执行任务
-func (executor Executor) ExecJob(info *common.JobExecInfo) {
+func (executor *Executor) ExecJob(info *common.JobExecInfo) {
 	go func() {
 		// 初始化分布式锁
 		jobLock := GJobMgr.CreateJobLock(info.Job.Name)
@@ -40,10 +40,10 @@ func (executor Executor) ExecJob(info *common.JobExecInfo) {
 		time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
 
 		// 尝试上锁
-		err := jobLock.TryLock()
+		err := jobLock.tryLock()
 		// 释放锁
 		defer func(jobLock *JobLock) {
-			if err := jobLock.UnLock(); err != nil {
+			if err := jobLock.unLock(); err != nil {
 				glog.Warning(err)
 			}
 		}(jobLock)

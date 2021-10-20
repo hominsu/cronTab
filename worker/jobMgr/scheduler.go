@@ -2,6 +2,7 @@ package jobMgr
 
 import (
 	"cronTab/common"
+	"cronTab/worker/logSink"
 	"fmt"
 	"strings"
 	"time"
@@ -79,16 +80,37 @@ func (scheduler *Scheduler) handlerJobEvent(jobEvent *common.JobEvent) {
 }
 
 // 处理任务结果
-func (scheduler Scheduler) handlerJobResult(result *common.JobExecResult) {
+func (scheduler *Scheduler) handlerJobResult(result *common.JobExecResult) {
 	// 删除任务执行状态
 	if _, ok := scheduler.jobExecutingTable[result.ExecInfo.Job.Name]; ok {
 		delete(scheduler.jobExecutingTable, result.ExecInfo.Job.Name)
 		fmt.Printf("%s: output:[%s], err:[%s]\n", result.ExecInfo.Job.Name, strings.Replace(string(result.Output), "\n", "", -1), result.Err)
 	}
+
+	// 生成执行日志
+	if result.Err != common.ErrorLockAlreadyRequired {
+		jobLog := &common.JobLog{
+			JobName:      result.ExecInfo.Job.Name,
+			Command:      result.ExecInfo.Job.Command,
+			Output:       string(result.Output),
+			PlanTime:     result.ExecInfo.PlanTime.UnixNano() / 1000 / 1000,
+			ScheduleTime: result.ExecInfo.RealTime.UnixNano() / 1000 / 1000,
+			StartTime:    result.StartTime.UnixNano() / 1000 / 1000,
+			EndTime:      result.EndTime.UnixNano() / 1000 / 1000,
+		}
+		if result.Err != nil {
+			jobLog.Err = result.Err.Error()
+		} else {
+			jobLog.Err = ""
+		}
+
+		// 存储到 mongodb
+		logSink.GLogSink.Append(jobLog)
+	}
 }
 
 // 尝试调度任务并重新计算任务调度状态
-func (scheduler Scheduler) tryScheduler() time.Duration {
+func (scheduler *Scheduler) tryScheduler() time.Duration {
 	var nearTime *time.Time
 
 	// 如果任务表为空, 随便睡眠多久
@@ -119,7 +141,7 @@ func (scheduler Scheduler) tryScheduler() time.Duration {
 }
 
 // 尝试执行任务
-func (scheduler Scheduler) tryStartJob(jobPlan *common.JobSchedulerPlan) {
+func (scheduler *Scheduler) tryStartJob(jobPlan *common.JobSchedulerPlan) {
 	// 如果调度的时间间隔小于任务执行所需时间, 只能执行一次, 防止并发
 
 	// 如果任务正在执行, 跳过本次调度
@@ -142,6 +164,6 @@ func (scheduler Scheduler) tryStartJob(jobPlan *common.JobSchedulerPlan) {
 }
 
 // PushJobResult 回传任务执行结果
-func (scheduler Scheduler) PushJobResult(jobResult *common.JobExecResult) {
+func (scheduler *Scheduler) PushJobResult(jobResult *common.JobExecResult) {
 	scheduler.jobResultChan <- jobResult
 }

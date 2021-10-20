@@ -3,6 +3,19 @@
   "etcd_endpoints": [
     "127.0.0.1:2379"
   ],
+
   "etcd 连接超时": "毫秒",
-  "etcd_dail_timeout": 5000
+  "etcd_dail_timeout": 5000,
+
+  "mongodb 地址": "",
+  "mongodb_uri": "mongodb://root:example@127.0.0.1:27017",
+
+  "mongodb 连接超时时间": "ms",
+  "mongodb_connect_timeout": 5000,
+
+  "日志批次大小": "满了才会提交 mongodb",
+  "job_log_batch_size": 100,
+
+  "日志自动提交超时时间": "ms",
+  "job_log_commit_timeout": 1000
 }
