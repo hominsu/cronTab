@@ -1,0 +1,107 @@
+package jobMgr
+
+import (
+	"context"
+	"cronTab/common"
+	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/client/v3"
+	"time"
+)
+
+// CreateJobLock 创建任务执行锁
+func (jobMgr *JobMgr) CreateJobLock(jobName string) *JobLock {
+	// 返回一把锁
+	return InitJobLock(jobName, jobMgr.kv, jobMgr.lease)
+}
+
+// WatchJob 监听任务
+func (jobMgr *JobMgr) WatchJob() error {
+	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
+	defer cancel()
+
+	// 1. Get /cron/jobs/ 目录下的所有任务, 并且获得当前集群的 Revision
+	getResp, err := jobMgr.kv.Get(ctx, common.JobSaveDir, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	// 当前的任务
+	for _, kv := range getResp.Kvs {
+		if job, err := common.JobUnmarshal(kv.Value); err != nil {
+			// 值非法
+			continue
+		} else {
+			jobEvent := common.BuildJobEvent(common.JobEventSave, job)
+			// 任务同步给 scheduler(调度协程)
+			GScheduler.PushJobEvent(jobEvent)
+		}
+	}
+
+	// 从 GET 时刻的后续版本开始监听变化
+	watchStartRevision := getResp.Header.Revision + 1
+
+	// 监听协程
+	go watchJobFunc(jobMgr, watchStartRevision)
+
+	return nil
+}
+
+// 监听任务变化函数
+func watchJobFunc(jobMgr *JobMgr, watchStartRevision int64) {
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	// 监听 /cron/jobs/ 目录的后续变化
+	watchChan := jobMgr.watcher.Watch(ctx, common.JobSaveDir, clientv3.WithRev(watchStartRevision), clientv3.WithPrefix())
+
+	for watchResp := range watchChan {
+		for _, ev := range watchResp.Events {
+			var jobEvent *common.JobEvent
+			switch ev.Type {
+			case mvccpb.PUT: // 任务保存事件
+				job, err := common.JobUnmarshal(ev.Kv.Value)
+				if err != nil {
+					continue
+				}
+				// 构造一个更新 event 事件
+				jobEvent = common.BuildJobEvent(common.JobEventSave, job)
+			case mvccpb.DELETE: // 任务删除事件
+				jobName := common.ExtractJobName(string(ev.Kv.Key))
+				// 构造一个删除 event 事件
+				jobEvent = common.BuildJobEvent(common.JobEventDelete, &common.Job{Name: jobName})
+			}
+			// 推送事件给 scheduler(调度协程)
+			GScheduler.PushJobEvent(jobEvent)
+		}
+	}
+}
+
+// WatchKill 监听强杀任务
+func (jobMgr *JobMgr) WatchKill() error {
+	// 监听协程
+	go watchKillFunc(jobMgr)
+
+	return nil
+}
+
+// 监听强杀变化函数
+func watchKillFunc(jobMgr *JobMgr) {
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	// 监听 /cron/kill/ 目录的变化
+	watchChan := jobMgr.watcher.Watch(ctx, common.JobKillDir, clientv3.WithPrefix())
+
+	for watchResp := range watchChan {
+		for _, ev := range watchResp.Events {
+			switch ev.Type {
+			case mvccpb.PUT: // 杀死任务事件
+				jobName := common.ExtractKillName(string(ev.Kv.Key))
+				jobEvent := common.BuildJobEvent(common.JobEventKill, &common.Job{Name: jobName})
+				// 推送事件给 scheduler(调度协程)
+				GScheduler.PushJobEvent(jobEvent)
+			case mvccpb.DELETE: // kill 自动过期
+			}
+		}
+	}
+}

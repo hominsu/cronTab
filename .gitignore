@@ -1,2 +1,3 @@
 .idea
 **/etcd-data
+**/mongo-data

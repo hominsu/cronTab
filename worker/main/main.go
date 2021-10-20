@@ -2,7 +2,8 @@ package main
 
 import (
 	"cronTab/worker/config"
-	"cronTab/worker/etcdOps"
+	"cronTab/worker/jobMgr"
+	"cronTab/worker/logSink"
 	"flag"
 	"github.com/golang/glog"
 	"os"
@@ -28,6 +29,8 @@ func initEnv() {
 }
 
 func main() {
+	var err error
+
 	// 初始化命令行参数
 	initArgs()
 
@@ -55,15 +58,40 @@ func main() {
 	initEnv()
 
 	// 加载配置
-	if err := config.InitialConfig(confFile); err != nil {
+	if err = config.InitialConfig(confFile); err != nil {
+		glog.Fatal(err)
+	}
+
+	// 启动日志协程
+	if err = logSink.InitLogSink(); err != nil {
 		glog.Fatal(err)
 	}
 
 	// 任务管理
-	if err := etcdOps.InitJobMgr(); err != nil {
+	if err = jobMgr.InitJobMgr(); err != nil {
 		glog.Fatal(err)
 	}
-	defer etcdOps.CloseEtcdConn()
+	defer jobMgr.CloseEtcdConn()
+
+	// 启动执行器
+	if err = jobMgr.InitExecutor(); err != nil {
+		glog.Fatal(err)
+	}
+
+	// 启动调度
+	if err = jobMgr.InitScheduler(); err != nil {
+		glog.Fatal(err)
+	}
+
+	// 启动任务监听
+	if err = jobMgr.GJobMgr.WatchJob(); err != nil {
+		glog.Fatal(err)
+	}
+
+	// 启动强杀监听
+	if err = jobMgr.GJobMgr.WatchKill(); err != nil {
+		glog.Fatal(err)
+	}
 
 	// 阻塞，等待退出
 	<-done

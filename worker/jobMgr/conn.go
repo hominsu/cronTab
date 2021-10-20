@@ -1,4 +1,4 @@
-package etcdOps
+package jobMgr
 
 import (
 	"cronTab/worker/config"
