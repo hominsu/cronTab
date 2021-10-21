@@ -2,8 +2,10 @@ package main
 
 import (
 	"cronTab/worker/config"
+	"cronTab/worker/etcdOps"
 	"cronTab/worker/jobMgr"
 	"cronTab/worker/logSink"
+	"cronTab/worker/mongodbOps"
 	"flag"
 	"github.com/golang/glog"
 	"os"
@@ -62,7 +64,17 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	// 启动日志协程
+	// 连接 mongodb
+	if err = mongodbOps.InitMongodbConn(); err != nil {
+		glog.Fatal(err)
+	}
+
+	// 连接 etcd
+	if err = etcdOps.InitEtcdConn(); err != nil {
+		glog.Fatal()
+	}
+
+	// 启动日志池
 	if err = logSink.InitLogSink(); err != nil {
 		glog.Fatal(err)
 	}

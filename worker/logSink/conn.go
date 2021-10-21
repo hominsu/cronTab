@@ -1,14 +1,12 @@
 package logSink
 
 import (
-	"context"
 	"cronTab/common"
-	"cronTab/worker/config"
+	"cronTab/worker/mongodbOps"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
 )
 
+// LogSink 日志池
 type LogSink struct {
 	cli            *mongo.Client
 	logCollection  *mongo.Collection
@@ -20,20 +18,12 @@ var (
 	GLogSink *LogSink
 )
 
+// InitLogSink 初始化日志池
 func InitLogSink() error {
-	// 建立连接
-	cli, err := mongo.Connect(context.TODO(),
-		options.Client().
-			ApplyURI(config.GConfig.MongodbUri).
-			SetConnectTimeout(time.Duration(config.GConfig.MongodbConnectTimeout)*time.Millisecond))
-	if err != nil {
-		return err
-	}
-
 	// 选择 db 和 collection
 	GLogSink = &LogSink{
-		cli:            cli,
-		logCollection:  cli.Database("cron").Collection("log"),
+		cli:            mongodbOps.MongodbCli,
+		logCollection:  mongodbOps.MongodbCli.Database("cron").Collection("log"),
 		logChan:        make(chan *common.JobLog, 1000),
 		autoCommitChan: make(chan *common.LogBatch, 1000),
 	}
