@@ -1,4 +1,4 @@
-package etcdOps
+package etcd_ops
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// etcdCli etcd 连接
 type etcdCli struct {
 	cli     *clientv3.Client
 	kv      clientv3.KV

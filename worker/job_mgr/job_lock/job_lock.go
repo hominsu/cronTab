@@ -3,7 +3,7 @@ package job_lock
 import (
 	"context"
 	"cronTab/common"
-	"cronTab/worker/etcdOps"
+	"cronTab/worker/etcd_ops"
 	"go.etcd.io/etcd/client/v3"
 )
 
@@ -21,8 +21,8 @@ type JobLock struct {
 // InitJobLock 初始化一把锁
 func InitJobLock(jobName string) *JobLock {
 	return &JobLock{
-		kv:       etcdOps.EtcdCli.GetKv(),
-		lease:    etcdOps.EtcdCli.GetLease(),
+		kv:       etcd_ops.EtcdCli.GetKv(),
+		lease:    etcd_ops.EtcdCli.GetLease(),
 		JobName:  jobName,
 		isLocked: false,
 	}

@@ -1,4 +1,4 @@
-package common
+package cron_job
 
 // JobLog 任务执行日志
 type JobLog struct {

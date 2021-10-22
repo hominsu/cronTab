@@ -3,7 +3,8 @@ package main
 import (
 	"cronTab/master/api_server"
 	"cronTab/master/config"
-	"cronTab/master/etcdOps"
+	"cronTab/master/etcd_ops"
+	"cronTab/master/job_mgr"
 	"flag"
 	"github.com/golang/glog"
 	"runtime"
@@ -26,6 +27,8 @@ func initEnv() {
 }
 
 func main() {
+	var err error
+
 	// 初始化命令行参数
 	initArgs()
 
@@ -39,11 +42,21 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	// 任务管理
-	if err := etcdOps.InitJobMgr(); err != nil {
+	// 连接 etcd
+	if err = etcd_ops.InitEtcdConn(); err != nil {
 		glog.Fatal(err)
 	}
-	defer etcdOps.CloseEtcdConn()
+	defer func() {
+		err := etcd_ops.CloseEtcdConn()
+		if err != nil {
+			glog.Fatal(err)
+		}
+	}()
+
+	// 任务管理
+	if err = job_mgr.InitJobMgr(); err != nil {
+		glog.Fatal(err)
+	}
 
 	// 启动 Http 服务
 	api_server.InitApiServer()

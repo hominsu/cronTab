@@ -1,4 +1,4 @@
-package common
+package cron_job
 
 // JobEvent 任务变化事件: 更新任务, 删除任务
 type JobEvent struct {

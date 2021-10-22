@@ -65,12 +65,12 @@ function deleteJobCallBack() {
     const $btn = $(this).button('loading');
     const jobName = $(this).parents("tr").children(".job-name").text();
     $.ajax({
-        url: '/job/delete',
-        type: 'post',
+        url: `/job`,
+        type: 'delete',
         dataType: 'json',
-        data: {name: jobName},
+        contentType: 'application/json',
+        data: JSON.stringify({name: jobName}),
         success: function (resp) {
-            // window.location.reload()
             rebuildJobList()
 
             const alert_success = $('#alert-success-modal #alert-success .alert-success-content');
@@ -93,9 +93,9 @@ function killJobCallBack() {
         url: '/job/kill',
         type: 'post',
         dataType: 'json',
-        data: {name: jobName},
+        contentType: 'application/json',
+        data: JSON.stringify({name: jobName}),
         success: function (resp) {
-            // window.location.reload()
             rebuildJobList()
 
             const alert_success = $('#alert-success-modal #alert-success .alert-success-content');
@@ -117,13 +117,13 @@ function commitJobCallBack() {
         cron_expr: $('#edit-cron-expr').val()
     };
     $.ajax({
-        url: '/job/save',
+        url: '/job',
         type: 'post',
         dataType: 'json',
-        data: {job: JSON.stringify(jobInfo)},
+        contentType: 'application/json',
+        data: JSON.stringify(jobInfo),
         success: function (resp) {
             $('#edit-modal').modal('hide')
-            // window.location.reload()
             rebuildJobList()
 
             const alert_success = $('#alert-success-modal #alert-success .alert-success-content');
@@ -151,7 +151,8 @@ function appendOldJob(alert_success, resp) {
 // 刷新任务列表
 function rebuildJobList() {
     $.ajax({
-        url: '/job/list',
+        url: '/job',
+        type: 'get',
         dataType: 'json',
         success: function (resp) {
             // 服务端出错

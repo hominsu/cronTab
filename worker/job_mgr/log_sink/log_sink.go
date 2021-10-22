@@ -2,14 +2,14 @@ package log_sink
 
 import (
 	"context"
-	"cronTab/common"
+	"cronTab/common/cron_job"
 	"cronTab/worker/config"
 	"github.com/golang/glog"
 	"time"
 )
 
 // Append 发送日志
-func (logSink *LogSink) Append(jobLog *common.JobLog) {
+func (logSink *LogSink) Append(jobLog *cron_job.JobLog) {
 	select {
 	case logSink.logChan <- jobLog:
 	default:
@@ -19,7 +19,7 @@ func (logSink *LogSink) Append(jobLog *common.JobLog) {
 
 // 日志存储协程
 func (logSink *LogSink) writeLoop() {
-	var logBatch *common.LogBatch
+	var logBatch *cron_job.LogBatch
 	var commitTimer *time.Timer
 
 	for {
@@ -27,10 +27,10 @@ func (logSink *LogSink) writeLoop() {
 		case log := <-logSink.logChan:
 			// 初始化日志批次
 			if logBatch == nil {
-				logBatch = &common.LogBatch{}
+				logBatch = &cron_job.LogBatch{}
 				// 让这个批次超时自动提交
 				commitTimer = time.AfterFunc(time.Duration(config.GConfig.JobLogCommitTimeout)*time.Millisecond,
-					func(batch *common.LogBatch) func() {
+					func(batch *cron_job.LogBatch) func() {
 						return func() {
 							// 发出超时通知
 							logSink.autoCommitChan <- batch
@@ -68,7 +68,7 @@ func (logSink *LogSink) writeLoop() {
 }
 
 // 批量写入日志到 mongodb
-func (logSink *LogSink) saveLogs(batch *common.LogBatch) error {
+func (logSink *LogSink) saveLogs(batch *cron_job.LogBatch) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 

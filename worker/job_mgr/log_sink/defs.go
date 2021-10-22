@@ -1,8 +1,8 @@
 package log_sink
 
 import (
-	"cronTab/common"
-	"cronTab/worker/mongodbOps"
+	"cronTab/common/cron_job"
+	"cronTab/worker/mongodb_ops"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -10,8 +10,8 @@ import (
 type LogSink struct {
 	cli            *mongo.Client
 	logCollection  *mongo.Collection
-	logChan        chan *common.JobLog
-	autoCommitChan chan *common.LogBatch
+	logChan        chan *cron_job.JobLog
+	autoCommitChan chan *cron_job.LogBatch
 }
 
 var (
@@ -22,10 +22,10 @@ var (
 func InitLogSink() error {
 	// 选择 db 和 collection
 	GLogSink = &LogSink{
-		cli:            mongodbOps.MongodbCli,
-		logCollection:  mongodbOps.MongodbCli.Database("cron").Collection("log"),
-		logChan:        make(chan *common.JobLog, 1000),
-		autoCommitChan: make(chan *common.LogBatch, 1000),
+		cli:            mongodb_ops.MongodbCli,
+		logCollection:  mongodb_ops.MongodbCli.Database("cron").Collection("log"),
+		logChan:        make(chan *cron_job.JobLog, 1000),
+		autoCommitChan: make(chan *cron_job.LogBatch, 1000),
 	}
 
 	// 启动 mongodb 处理协程

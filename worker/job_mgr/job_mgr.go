@@ -3,7 +3,8 @@ package job_mgr
 import (
 	"context"
 	"cronTab/common"
-	"cronTab/worker/etcdOps"
+	"cronTab/common/cron_job"
+	"cronTab/worker/etcd_ops"
 	"cronTab/worker/job_mgr/log_sink"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3"
@@ -22,9 +23,9 @@ func InitJobMgr() error {
 
 	// 获取 kv 和 lease
 	jobMgr := &JobMgr{
-		kv:      etcdOps.EtcdCli.GetKv(),
-		lease:   etcdOps.EtcdCli.GetLease(),
-		watcher: etcdOps.EtcdCli.GetWatcher(),
+		kv:      etcd_ops.EtcdCli.GetKv(),
+		lease:   etcd_ops.EtcdCli.GetLease(),
+		watcher: etcd_ops.EtcdCli.GetWatcher(),
 	}
 
 	// 启动日志池
@@ -68,11 +69,11 @@ func (jobMgr *JobMgr) WatchJob() error {
 
 	// 当前的任务
 	for _, kv := range getResp.Kvs {
-		if job, err := common.JobUnmarshal(kv.Value); err != nil {
+		if job, err := cron_job.JobUnmarshal(kv.Value); err != nil {
 			// 值非法
 			continue
 		} else {
-			jobEvent := common.BuildJobEvent(common.JobEventSave, job)
+			jobEvent := cron_job.BuildJobEvent(common.JobEventSave, job)
 			// 任务同步给 scheduler(调度协程)
 			GScheduler.PushJobEvent(jobEvent)
 		}
@@ -97,19 +98,19 @@ func watchJobFunc(jobMgr *JobMgr, watchStartRevision int64) {
 
 	for watchResp := range watchChan {
 		for _, ev := range watchResp.Events {
-			var jobEvent *common.JobEvent
+			var jobEvent *cron_job.JobEvent
 			switch ev.Type {
 			case mvccpb.PUT: // 任务保存事件
-				job, err := common.JobUnmarshal(ev.Kv.Value)
+				job, err := cron_job.JobUnmarshal(ev.Kv.Value)
 				if err != nil {
 					continue
 				}
 				// 构造一个更新 event 事件
-				jobEvent = common.BuildJobEvent(common.JobEventSave, job)
+				jobEvent = cron_job.BuildJobEvent(common.JobEventSave, job)
 			case mvccpb.DELETE: // 任务删除事件
-				jobName := common.ExtractJobName(string(ev.Kv.Key))
+				jobName := cron_job.ExtractJobName(string(ev.Kv.Key))
 				// 构造一个删除 event 事件
-				jobEvent = common.BuildJobEvent(common.JobEventDelete, &common.Job{Name: jobName})
+				jobEvent = cron_job.BuildJobEvent(common.JobEventDelete, &cron_job.Job{Name: jobName})
 			}
 			// 推送事件给 scheduler(调度协程)
 			GScheduler.PushJobEvent(jobEvent)
@@ -137,8 +138,8 @@ func watchKillFunc(jobMgr *JobMgr) {
 		for _, ev := range watchResp.Events {
 			switch ev.Type {
 			case mvccpb.PUT: // 杀死任务事件
-				jobName := common.ExtractKillName(string(ev.Kv.Key))
-				jobEvent := common.BuildJobEvent(common.JobEventKill, &common.Job{Name: jobName})
+				jobName := cron_job.ExtractKillName(string(ev.Kv.Key))
+				jobEvent := cron_job.BuildJobEvent(common.JobEventKill, &cron_job.Job{Name: jobName})
 				// 推送事件给 scheduler(调度协程)
 				GScheduler.PushJobEvent(jobEvent)
 			case mvccpb.DELETE: // kill 自动过期

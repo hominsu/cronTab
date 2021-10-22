@@ -3,7 +3,7 @@ package heart_beat
 import (
 	"context"
 	"cronTab/common"
-	"cronTab/worker/etcdOps"
+	"cronTab/worker/etcd_ops"
 	"go.etcd.io/etcd/client/v3"
 	"net"
 	"time"
@@ -19,8 +19,8 @@ type HeartBeat struct {
 // InitHeartBeat 初始化心跳
 func InitHeartBeat() *HeartBeat {
 	return &HeartBeat{
-		kv:    etcdOps.EtcdCli.GetKv(),
-		lease: etcdOps.EtcdCli.GetLease(),
+		kv:    etcd_ops.EtcdCli.GetKv(),
+		lease: etcd_ops.EtcdCli.GetLease(),
 	}
 }
 

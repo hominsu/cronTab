@@ -1,7 +1,7 @@
 package job_mgr
 
 import (
-	"cronTab/common"
+	"cronTab/common/cron_job"
 	"cronTab/worker/job_mgr/job_lock"
 	"github.com/golang/glog"
 	"math/rand"
@@ -25,13 +25,13 @@ func InitExecutor() error {
 }
 
 // ExecJob 执行任务
-func (executor *Executor) ExecJob(info *common.JobExecInfo) {
+func (executor *Executor) ExecJob(info *cron_job.JobExecInfo) {
 	go func() {
 		// 初始化分布式锁
 		jobLock := job_lock.InitJobLock(info.Job.Name)
 
 		// 任务结果
-		result := &common.JobExecResult{
+		result := &cron_job.JobExecResult{
 			ExecInfo:  info,
 			Output:    make([]byte, 0), // 初始化一个空值
 			StartTime: time.Now(),      // 记录任务开始时间

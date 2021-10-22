@@ -2,10 +2,10 @@ package main
 
 import (
 	"cronTab/worker/config"
-	"cronTab/worker/etcdOps"
+	"cronTab/worker/etcd_ops"
 	"cronTab/worker/heart_beat"
 	"cronTab/worker/job_mgr"
-	"cronTab/worker/mongodbOps"
+	"cronTab/worker/mongodb_ops"
 	"flag"
 	"github.com/golang/glog"
 	"os"
@@ -65,22 +65,22 @@ func main() {
 	}
 
 	// 连接 etcd
-	if err = etcdOps.InitEtcdConn(); err != nil {
+	if err = etcd_ops.InitEtcdConn(); err != nil {
 		glog.Fatal(err)
 	}
 	defer func() {
-		err := etcdOps.CloseEtcdConn()
+		err := etcd_ops.CloseEtcdConn()
 		if err != nil {
 			glog.Fatal(err)
 		}
 	}()
 
 	// 连接 mongodb
-	if err = mongodbOps.InitMongodbConn(); err != nil {
+	if err = mongodb_ops.InitMongodbConn(); err != nil {
 		glog.Fatal(err)
 	}
 	defer func() {
-		err := mongodbOps.CloseMongodbConn()
+		err := mongodb_ops.CloseMongodbConn()
 		if err != nil {
 			glog.Fatal(err)
 		}
