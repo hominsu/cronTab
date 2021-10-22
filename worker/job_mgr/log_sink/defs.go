@@ -1,4 +1,4 @@
-package logSink
+package log_sink
 
 import (
 	"cronTab/common"

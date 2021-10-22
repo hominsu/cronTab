@@ -35,3 +35,14 @@ func InitMongodbConn() error {
 
 	return nil
 }
+
+// CloseMongodbConn 关闭 mongodb 连接
+func CloseMongodbConn() error {
+	ctx, cancel := context.WithTimeout(context.TODO(), 1000*time.Millisecond)
+	defer cancel()
+
+	if err := MongodbCli.Disconnect(ctx); err != nil {
+		return err
+	}
+	return nil
+}

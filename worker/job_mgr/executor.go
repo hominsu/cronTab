@@ -1,7 +1,8 @@
-package jobMgr
+package job_mgr
 
 import (
 	"cronTab/common"
+	"cronTab/worker/job_mgr/job_lock"
 	"github.com/golang/glog"
 	"math/rand"
 	"os/exec"
@@ -27,7 +28,7 @@ func InitExecutor() error {
 func (executor *Executor) ExecJob(info *common.JobExecInfo) {
 	go func() {
 		// 初始化分布式锁
-		jobLock := GJobMgr.CreateJobLock(info.Job.Name)
+		jobLock := job_lock.InitJobLock(info.Job.Name)
 
 		// 任务结果
 		result := &common.JobExecResult{
@@ -40,10 +41,10 @@ func (executor *Executor) ExecJob(info *common.JobExecInfo) {
 		time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
 
 		// 尝试上锁
-		err := jobLock.tryLock()
+		err := jobLock.TryLock()
 		// 释放锁
-		defer func(jobLock *JobLock) {
-			if err := jobLock.unLock(); err != nil {
+		defer func(jobLock *job_lock.JobLock) {
+			if err := jobLock.UnLock(); err != nil {
 				glog.Warning(err)
 			}
 		}(jobLock)

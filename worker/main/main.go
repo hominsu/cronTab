@@ -3,8 +3,8 @@ package main
 import (
 	"cronTab/worker/config"
 	"cronTab/worker/etcdOps"
-	"cronTab/worker/jobMgr"
-	"cronTab/worker/logSink"
+	"cronTab/worker/heart_beat"
+	"cronTab/worker/job_mgr"
 	"cronTab/worker/mongodbOps"
 	"flag"
 	"github.com/golang/glog"
@@ -64,44 +64,42 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	// 连接 etcd
+	if err = etcdOps.InitEtcdConn(); err != nil {
+		glog.Fatal(err)
+	}
+	defer func() {
+		err := etcdOps.CloseEtcdConn()
+		if err != nil {
+			glog.Fatal(err)
+		}
+	}()
+
 	// 连接 mongodb
 	if err = mongodbOps.InitMongodbConn(); err != nil {
 		glog.Fatal(err)
 	}
+	defer func() {
+		err := mongodbOps.CloseMongodbConn()
+		if err != nil {
+			glog.Fatal(err)
+		}
+	}()
 
-	// 连接 etcd
-	if err = etcdOps.InitEtcdConn(); err != nil {
-		glog.Fatal()
-	}
-
-	// 启动日志池
-	if err = logSink.InitLogSink(); err != nil {
+	// 初始化心跳
+	heartBeat := heart_beat.InitHeartBeat()
+	if err = heartBeat.StartHeartBeat(); err != nil {
 		glog.Fatal(err)
 	}
+	defer func(heartBeat *heart_beat.HeartBeat) {
+		err := heartBeat.EndHeartBeat()
+		if err != nil {
+			glog.Fatal(err)
+		}
+	}(heartBeat)
 
-	// 任务管理
-	if err = jobMgr.InitJobMgr(); err != nil {
-		glog.Fatal(err)
-	}
-	defer jobMgr.CloseEtcdConn()
-
-	// 启动执行器
-	if err = jobMgr.InitExecutor(); err != nil {
-		glog.Fatal(err)
-	}
-
-	// 启动调度
-	if err = jobMgr.InitScheduler(); err != nil {
-		glog.Fatal(err)
-	}
-
-	// 启动任务监听
-	if err = jobMgr.GJobMgr.WatchJob(); err != nil {
-		glog.Fatal(err)
-	}
-
-	// 启动强杀监听
-	if err = jobMgr.GJobMgr.WatchKill(); err != nil {
+	// 初始化任务管理
+	if err = job_mgr.InitJobMgr(); err != nil {
 		glog.Fatal(err)
 	}
 

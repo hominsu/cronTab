@@ -1,17 +1,58 @@
-package jobMgr
+package job_mgr
 
 import (
 	"context"
 	"cronTab/common"
+	"cronTab/worker/etcdOps"
+	"cronTab/worker/job_mgr/log_sink"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3"
 	"time"
 )
 
-// CreateJobLock 创建任务执行锁
-func (jobMgr *JobMgr) CreateJobLock(jobName string) *JobLock {
-	// 返回一把锁
-	return InitJobLock(jobName, jobMgr.kv, jobMgr.lease)
+type JobMgr struct {
+	kv      clientv3.KV
+	lease   clientv3.Lease
+	watcher clientv3.Watcher
+}
+
+// InitJobMgr 初始化 JobMgr
+func InitJobMgr() error {
+	var err error
+
+	// 获取 kv 和 lease
+	jobMgr := &JobMgr{
+		kv:      etcdOps.EtcdCli.GetKv(),
+		lease:   etcdOps.EtcdCli.GetLease(),
+		watcher: etcdOps.EtcdCli.GetWatcher(),
+	}
+
+	// 启动日志池
+	if err = log_sink.InitLogSink(); err != nil {
+		return err
+	}
+
+	// 启动执行器
+	if err = InitExecutor(); err != nil {
+		return err
+	}
+
+	// 启动调度
+	if err = InitScheduler(); err != nil {
+		return err
+	}
+
+	// 启动任务监听
+	if err = jobMgr.WatchJob(); err != nil {
+		return err
+	}
+
+	// 启动强杀监听
+	if err = jobMgr.WatchKill(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // WatchJob 监听任务

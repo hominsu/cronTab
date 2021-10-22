@@ -18,4 +18,7 @@ const (
 
 	// JobEventKill 删除任务事件
 	JobEventKill int = 3
+
+	// NodeIpNet 节点 IP 地址
+	NodeIpNet = "/cron/nodes/"
 )

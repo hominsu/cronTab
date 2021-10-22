@@ -1,8 +1,8 @@
-package jobMgr
+package job_mgr
 
 import (
 	"cronTab/common"
-	"cronTab/worker/logSink"
+	"cronTab/worker/job_mgr/log_sink"
 	"fmt"
 	"strings"
 	"time"
@@ -105,7 +105,7 @@ func (scheduler *Scheduler) handlerJobResult(result *common.JobExecResult) {
 		}
 
 		// 存储到 mongodb
-		logSink.GLogSink.Append(jobLog)
+		log_sink.GLogSink.Append(jobLog)
 	}
 }
 
