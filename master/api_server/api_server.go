@@ -3,47 +3,42 @@ package api_server
 import (
 	"cronTab/master/config"
 	"github.com/gin-gonic/gin"
-	"github.com/golang/glog"
 	"net/http"
 	"path"
 )
 
-type Engine struct {
-	*gin.Engine
-}
+func handlerRegister() *gin.Engine {
+	engine := gin.Default()
 
-func handlerRegister() (engine *gin.Engine) {
-	e := Engine{gin.Default()}
-
-	e.Handle("POST", "/job", handlerJobSave)
-	e.Handle("DELETE", "/job", handlerJobDelete)
-	e.Handle("GET", "/job", handlerJobList)
-	e.Handle("POST", "/job/kill", handlerJobKill)
-	e.Handle("GET", "/job/node", handlerNodeList)
+	engine.Handle("POST", "/job", handlerJobSave)
+	engine.Handle("DELETE", "/job", handlerJobDelete)
+	engine.Handle("GET", "/job", handlerJobList)
+	engine.Handle("POST", "/job/kill", handlerJobKill)
+	engine.Handle("GET", "/job/node", handlerNodeList)
+	engine.Handle("POST", "/job/log", handlerJobLogList)
 
 	// 静态
-	e.Static("/static", config.GConfig.WebRoot)
+	engine.Static("/static", config.GConfig.WebRoot)
 
-	e.LoadHTMLGlob(path.Join(config.GConfig.WebRoot, "html/*"))
-	e.Handle("GET", "/", func(c *gin.Context) {
+	engine.LoadHTMLGlob(path.Join(config.GConfig.WebRoot, "html/*"))
+	engine.Handle("GET", "/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", gin.H{})
 	})
 
-	return e.Engine
+	return engine
 }
 
-func InitApiServer() {
+func InitApiServer() error {
 	// 设置 gin 为 release 模式
-	//gin.SetMode(gin.ReleaseMode)
-
-	defer glog.Flush()
+	gin.SetMode(gin.ReleaseMode)
 
 	// 注册 api_server
 	engine := handlerRegister()
 
 	// 监听
 	if err := engine.Run(":" + config.GConfig.ApiPort); err != nil {
-		glog.Fatal(err)
+		return err
 	}
 
+	return nil
 }

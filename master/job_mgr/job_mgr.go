@@ -5,6 +5,7 @@ import (
 	"cronTab/common"
 	"cronTab/common/cron_job"
 	"cronTab/master/etcd_ops"
+	"cronTab/master/log_sink"
 	"errors"
 	"go.etcd.io/etcd/client/v3"
 	"strings"
@@ -21,11 +22,17 @@ var (
 )
 
 func InitJobMgr() error {
+	var err error
 
 	// 获取 kv 和 lease
 	GJobMgr = &JobMgr{
 		kv:    etcd_ops.EtcdCli.GetKv(),
 		lease: etcd_ops.EtcdCli.GetLease(),
+	}
+
+	// 初始化日志池
+	if err = log_sink.InitLogSink(); err != nil {
+		return err
 	}
 
 	return nil

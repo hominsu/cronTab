@@ -38,6 +38,8 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: example
     ports:
       - "27017:27017"
+    volumes:
+      - ./mongo-data/db:/data/db
     networks:
       net:
         aliases:
@@ -52,9 +54,6 @@ services:
       ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
     ports:
       - "8081:8081"
-    volumes:
-      - ./mongo-data/db:/data/db
-      - ./mongo-data/configdb:/data/configdb
     networks:
       net:
         aliases:

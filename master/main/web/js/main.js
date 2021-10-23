@@ -6,6 +6,9 @@ $(document).ready(function () {
     // 新建任务
     $("#new-job").on("click", newJobCallBack)
 
+    // 健康节点
+    $("#node").on("click", NodeCallBack)
+
     // 刷新按钮
     $("#refresh").on("click", refreshCallBack)
 
@@ -19,6 +22,9 @@ $(document).ready(function () {
 
     // 强杀按钮
     job_list.on("click", ".kill-job", killJobCallBack)
+
+    // 日志按钮
+    job_list.on("click", ".job-log", jobLogCallBack)
 
     // 模态框中提交按钮
     $("#commit-job").on("click", commitJobCallBack)
@@ -37,9 +43,39 @@ function newJobCallBack() {
     $('#edit-modal').modal('show')
 }
 
+// 新建任务按钮回调函数
+function NodeCallBack() {
+    const $btn = $(this).button('loading');
+    $.ajax({
+        url: '/job/node',
+        type: 'get',
+        dataType: 'json',
+        success: function (resp) {
+            // 任务数组
+            const nodeList = resp.data;
+
+            if (nodeList != null) {
+                // 清理列表
+                const node_list_tbody = $('#node-list tbody')
+                node_list_tbody.empty()
+
+                // 遍历任务, 填充 table
+                for (let i = 0; i < nodeList.length; ++i) {
+                    node_list_tbody.append($("<tr>").append($('<td>').html(nodeList[i])))
+                }
+            }
+
+            // 弹出模态框
+            $('#node-modal').modal('show')
+        }
+    })
+    $btn.button('reset')
+}
+
 // 刷新按钮回调函数
 function refreshCallBack() {
     const $btn = $(this).button('loading');
+    // 刷新任务表格
     rebuildJobList()
     $btn.button('reset')
 
@@ -65,12 +101,13 @@ function deleteJobCallBack() {
     const $btn = $(this).button('loading');
     const jobName = $(this).parents("tr").children(".job-name").text();
     $.ajax({
-        url: `/job`,
+        url: '/job',
         type: 'delete',
         dataType: 'json',
         contentType: 'application/json',
         data: JSON.stringify({name: jobName}),
         success: function (resp) {
+            // 刷新任务表格
             rebuildJobList()
 
             const alert_success = $('#alert-success-modal #alert-success .alert-success-content');
@@ -96,13 +133,56 @@ function killJobCallBack() {
         contentType: 'application/json',
         data: JSON.stringify({name: jobName}),
         success: function (resp) {
-            rebuildJobList()
-
             const alert_success = $('#alert-success-modal #alert-success .alert-success-content');
             alert_success.empty()
             alert_success.append($("<p>").append("Msg: " + resp.msg))
             // 弹出模态框
             $('#alert-success-modal').modal('show')
+        }
+    })
+    $btn.button('reset')
+}
+
+// 日志按钮回调函数
+function jobLogCallBack() {
+    const $btn = $(this).button('loading');
+    const jobName = $(this).parents("tr").children(".job-name").text();
+    $.ajax({
+        url: '/job/log',
+        type: 'post',
+        dataType: 'json',
+        contentType: 'application/json',
+        data: JSON.stringify({name: jobName}),
+        success: function (resp) {
+            // 任务数组
+            const jobList = resp.data;
+
+            // 清理标题
+            const title = $('#log-modal .modal-title')
+            title.empty()
+            title.html(jobName)
+
+            // 清理列表
+            const log_list_tbody = $('#log-list tbody')
+            log_list_tbody.empty()
+
+            // 遍历任务, 填充 table
+            for (let i = 0; i < jobList.length; ++i) {
+                const job = jobList[i];
+
+                const tr = $("<tr>")
+                tr.append($('<td class="job-command">').html(job.command))
+                tr.append($('<td class="job-output">').html(job.output))
+                tr.append($('<td class="job-err">').html(job.err))
+                tr.append($('<td class="job-plan-time">').html(job.plan_time))
+                tr.append($('<td class="job-schedule-time">').html(job.schedule_time))
+                tr.append($('<td class="job-usage-time">').html(job.end_time - job.start_time))
+
+                log_list_tbody.append(tr)
+            }
+
+            // 弹出模态框
+            $('#log-modal').modal('show')
         }
     })
     $btn.button('reset')
@@ -123,7 +203,10 @@ function commitJobCallBack() {
         contentType: 'application/json',
         data: JSON.stringify(jobInfo),
         success: function (resp) {
+            // 隐藏编辑模态框
             $('#edit-modal').modal('hide')
+
+            // 刷新任务表格
             rebuildJobList()
 
             const alert_success = $('#alert-success-modal #alert-success .alert-success-content');
@@ -185,7 +268,8 @@ function rebuildJobList() {
                 const toolbar = $('<div class="btn-toolbar">')
                     .append($('<button class="btn btn-info edit-job">编辑</button>'))
                     .append($('<button class="btn btn-danger delete-job">删除</button>'))
-                    .append($('<button class="btn btn-warning kill-job">强杀</button>'));
+                    .append($('<button class="btn btn-warning kill-job">强杀</button>'))
+                    .append($('<button class="btn btn-success job-log">日志</button>'));
 
                 tr.append($("<td>").append(toolbar))
                 job_list_tbody.append(tr)

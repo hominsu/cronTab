@@ -4,6 +4,7 @@ import (
 	"cronTab/common"
 	"cronTab/common/cron_job"
 	"cronTab/master/job_mgr"
+	"cronTab/master/log_sink"
 	"github.com/gin-gonic/gin"
 )
 
@@ -12,9 +13,8 @@ func handlerJobSave(c *gin.Context) {
 	// 任务保存到 etcd
 	var err error
 
-	job := &cron_job.Job{}
-
 	// 反序列化 job
+	job := &cron_job.Job{}
 	if err = c.BindJSON(job); err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
 		return
@@ -36,9 +36,8 @@ func handlerJobDelete(c *gin.Context) {
 	// 删除 etcd 中的任务
 	var err error
 
-	job := &cron_job.Job{}
-
 	// 反序列化 job
+	job := &cron_job.Job{}
 	if err = c.BindJSON(job); err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
 		return
@@ -74,9 +73,8 @@ func handlerJobList(c *gin.Context) {
 func handlerJobKill(c *gin.Context) {
 	var err error
 
-	job := &cron_job.Job{}
-
 	// 反序列化 job
+	job := &cron_job.Job{}
 	if err = c.BindJSON(job); err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
 		return
@@ -94,6 +92,8 @@ func handlerJobKill(c *gin.Context) {
 
 // 列出全部节点
 func handlerNodeList(c *gin.Context) {
+	var err error
+
 	// 列出节点
 	nodes, err := job_mgr.GJobMgr.ListNodes()
 	if err != nil {
@@ -103,4 +103,25 @@ func handlerNodeList(c *gin.Context) {
 
 	// 返回正常应答
 	common.ResponseJson(c, 0, "success", nodes)
+}
+
+// 获取任务日志
+func handlerJobLogList(c *gin.Context) {
+	var err error
+
+	// 反序列化 JobPaging
+	jobPaging := &cron_job.JobPaging{}
+	if err = c.BindJSON(jobPaging); err != nil {
+		common.ResponseJson(c, -1, err.Error(), nil)
+		return
+	}
+
+	logs, err := log_sink.GLogSink.GetLogBatch(jobPaging.Name)
+	if err != nil {
+		common.ResponseJson(c, -1, err.Error(), nil)
+		return
+	}
+
+	// 返回正常应答
+	common.ResponseJson(c, 0, "success", logs)
 }

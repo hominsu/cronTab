@@ -25,7 +25,7 @@ func initArgs() {
 }
 
 // 初始化线程
-func initEnv() {
+func initProcess() {
 	// 设置线程数等于核心数
 	runtime.GOMAXPROCS(runtime.NumCPU())
 }
@@ -57,7 +57,7 @@ func main() {
 	}(done)
 
 	// 初始化线程
-	initEnv()
+	initProcess()
 
 	// 加载配置
 	if err = config.InitialConfig(confFile); err != nil {

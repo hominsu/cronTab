@@ -5,7 +5,7 @@ import (
 	"cronTab/common"
 	"cronTab/common/cron_job"
 	"cronTab/worker/etcd_ops"
-	"cronTab/worker/job_mgr/log_sink"
+	"cronTab/worker/log_sink"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3"
 	"time"

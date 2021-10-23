@@ -5,6 +5,7 @@ import (
 	"cronTab/master/config"
 	"cronTab/master/etcd_ops"
 	"cronTab/master/job_mgr"
+	"cronTab/master/mongodb_ops"
 	"flag"
 	"github.com/golang/glog"
 	"runtime"
@@ -21,7 +22,7 @@ func initArgs() {
 }
 
 // 初始化线程
-func initEnv() {
+func initProcess() {
 	// 设置线程数等于核心数
 	runtime.GOMAXPROCS(runtime.NumCPU())
 }
@@ -35,10 +36,10 @@ func main() {
 	defer glog.Flush()
 
 	// 初始化线程
-	initEnv()
+	initProcess()
 
 	// 加载配置
-	if err := config.InitialConfig(confFile); err != nil {
+	if err = config.InitialConfig(confFile); err != nil {
 		glog.Fatal(err)
 	}
 
@@ -53,11 +54,24 @@ func main() {
 		}
 	}()
 
+	// 连接 mongodb
+	if err = mongodb_ops.InitMongodbConn(); err != nil {
+		glog.Fatal(err)
+	}
+	defer func() {
+		err := mongodb_ops.CloseMongodbConn()
+		if err != nil {
+			glog.Fatal(err)
+		}
+	}()
+
 	// 任务管理
 	if err = job_mgr.InitJobMgr(); err != nil {
 		glog.Fatal(err)
 	}
 
 	// 启动 Http 服务
-	api_server.InitApiServer()
+	if err = api_server.InitApiServer(); err != nil {
+		glog.Fatal(err)
+	}
 }

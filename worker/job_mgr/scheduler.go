@@ -3,7 +3,7 @@ package job_mgr
 import (
 	"cronTab/common"
 	"cronTab/common/cron_job"
-	"cronTab/worker/job_mgr/log_sink"
+	"cronTab/worker/log_sink"
 	"fmt"
 	"strings"
 	"time"
