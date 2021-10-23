@@ -1,8 +1,9 @@
-package jobMgr
+package job_mgr
 
 import (
 	"cronTab/common"
-	"cronTab/worker/logSink"
+	"cronTab/common/cron_job"
+	"cronTab/worker/log_sink"
 	"fmt"
 	"strings"
 	"time"
@@ -10,10 +11,10 @@ import (
 
 // Scheduler 任务调度
 type Scheduler struct {
-	jobEventChan      chan *common.JobEvent               // etcd 任务队列
-	jobPlanTable      map[string]*common.JobSchedulerPlan // 任务调度计划表
-	jobExecutingTable map[string]*common.JobExecInfo      // 任务执行信息表
-	jobResultChan     chan *common.JobExecResult          // 任务执行结果队列
+	jobEventChan      chan *cron_job.JobEvent               // etcd 任务队列
+	jobPlanTable      map[string]*cron_job.JobSchedulerPlan // 任务调度计划表
+	jobExecutingTable map[string]*cron_job.JobExecInfo      // 任务执行信息表
+	jobResultChan     chan *cron_job.JobExecResult          // 任务执行结果队列
 }
 
 var (
@@ -23,10 +24,10 @@ var (
 // InitScheduler 初始化调度器
 func InitScheduler() error {
 	GScheduler = &Scheduler{
-		jobEventChan:      make(chan *common.JobEvent, 1000),
-		jobPlanTable:      make(map[string]*common.JobSchedulerPlan),
-		jobExecutingTable: make(map[string]*common.JobExecInfo),
-		jobResultChan:     make(chan *common.JobExecResult, 1000),
+		jobEventChan:      make(chan *cron_job.JobEvent, 1000),
+		jobPlanTable:      make(map[string]*cron_job.JobSchedulerPlan),
+		jobExecutingTable: make(map[string]*cron_job.JobExecInfo),
+		jobResultChan:     make(chan *cron_job.JobExecResult, 1000),
 	}
 
 	// 启动调度协程
@@ -36,7 +37,7 @@ func InitScheduler() error {
 }
 
 // PushJobEvent 推送任务事件
-func (scheduler *Scheduler) PushJobEvent(jobEvent *common.JobEvent) {
+func (scheduler *Scheduler) PushJobEvent(jobEvent *cron_job.JobEvent) {
 	scheduler.jobEventChan <- jobEvent
 }
 
@@ -59,10 +60,10 @@ func (scheduler *Scheduler) schedulerLoop() {
 }
 
 // 处理任务更改
-func (scheduler *Scheduler) handlerJobEvent(jobEvent *common.JobEvent) {
+func (scheduler *Scheduler) handlerJobEvent(jobEvent *cron_job.JobEvent) {
 	switch jobEvent.EventType {
 	case common.JobEventSave: // 保存事件
-		jobSchedulerPlan, err := common.BuildJobSchedulerPlan(jobEvent.Job)
+		jobSchedulerPlan, err := cron_job.BuildJobSchedulerPlan(jobEvent.Job)
 		if err != nil {
 			return
 		}
@@ -80,7 +81,7 @@ func (scheduler *Scheduler) handlerJobEvent(jobEvent *common.JobEvent) {
 }
 
 // 处理任务结果
-func (scheduler *Scheduler) handlerJobResult(result *common.JobExecResult) {
+func (scheduler *Scheduler) handlerJobResult(result *cron_job.JobExecResult) {
 	// 删除任务执行状态
 	if _, ok := scheduler.jobExecutingTable[result.ExecInfo.Job.Name]; ok {
 		delete(scheduler.jobExecutingTable, result.ExecInfo.Job.Name)
@@ -89,7 +90,7 @@ func (scheduler *Scheduler) handlerJobResult(result *common.JobExecResult) {
 
 	// 生成执行日志
 	if result.Err != common.ErrorLockAlreadyRequired {
-		jobLog := &common.JobLog{
+		jobLog := &cron_job.JobLog{
 			JobName:      result.ExecInfo.Job.Name,
 			Command:      result.ExecInfo.Job.Command,
 			Output:       string(result.Output),
@@ -105,7 +106,7 @@ func (scheduler *Scheduler) handlerJobResult(result *common.JobExecResult) {
 		}
 
 		// 存储到 mongodb
-		logSink.GLogSink.Append(jobLog)
+		log_sink.GLogSink.Append(jobLog)
 	}
 }
 
@@ -141,7 +142,7 @@ func (scheduler *Scheduler) tryScheduler() time.Duration {
 }
 
 // 尝试执行任务
-func (scheduler *Scheduler) tryStartJob(jobPlan *common.JobSchedulerPlan) {
+func (scheduler *Scheduler) tryStartJob(jobPlan *cron_job.JobSchedulerPlan) {
 	// 如果调度的时间间隔小于任务执行所需时间, 只能执行一次, 防止并发
 
 	// 如果任务正在执行, 跳过本次调度
@@ -151,7 +152,7 @@ func (scheduler *Scheduler) tryStartJob(jobPlan *common.JobSchedulerPlan) {
 	}
 
 	// 构建执行状态信息
-	jobExecInfo := common.BuildJobExecInfo(jobPlan)
+	jobExecInfo := cron_job.BuildJobExecInfo(jobPlan)
 
 	// 保存执行状态
 	scheduler.jobExecutingTable[jobPlan.Job.Name] = jobExecInfo
@@ -164,6 +165,6 @@ func (scheduler *Scheduler) tryStartJob(jobPlan *common.JobSchedulerPlan) {
 }
 
 // PushJobResult 回传任务执行结果
-func (scheduler *Scheduler) PushJobResult(jobResult *common.JobExecResult) {
+func (scheduler *Scheduler) PushJobResult(jobResult *cron_job.JobExecResult) {
 	scheduler.jobResultChan <- jobResult
 }

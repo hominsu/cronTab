@@ -30,8 +30,9 @@
     <!-- 功能按钮 -->
     <div class="row">
         <div class="col-md-12">
-            <button type="button" class="btn btn-success" id="refresh" style="float: right">刷新列表</button>
-            <button type="button" class="btn btn-primary" id="new-job" style="float: left">新建任务</button>
+            <button type="button" class="btn btn-primary" id="new-job" style="float: left; margin: 0 5px">新建任务</button>
+            <button type="button" class="btn btn-success" id="node" style="float: left; margin: 0 5px">健康节点</button>
+            <button type="button" class="btn btn-danger" id="refresh" style="float: right; margin: 0 5px">刷新列表</button>
         </div>
     </div>
 
@@ -83,8 +84,70 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
                     <button type="button" class="btn btn-primary" id="commit-job">提交</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
+    <!-- 节点模态框 -->
+    <div id="node-modal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">健康节点</h4>
+                </div>
+                <div class="modal-body">
+                    <!-- node 列表 -->
+                    <table id="node-list" class="table table-striped" style="margin: 0 auto">
+                        <thead>
+                        <tr>
+                            <th>节点地址</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
+    <!-- 日志模态框 -->
+    <div id="log-modal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document" style="width: auto; margin: 30px 100px">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title"></h4>
+                </div>
+                <div class="modal-body">
+                    <!-- node 列表 -->
+                    <table id="log-list" class="table table-striped" style="margin: 0 auto">
+                        <thead>
+                        <tr>
+                            <th>shell 命令</th>
+                            <th>shell 输出</th>
+                            <th>错误原因</th>
+                            <th>计划开始时间</th>
+                            <th>实际调度时间</th>
+                            <th>任务执行时间</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="delete-log">清空</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
                 </div>
             </div><!-- /.modal-content -->
         </div><!-- /.modal-dialog -->
@@ -147,6 +210,7 @@
             </div><!-- /.modal-content -->
         </div><!-- /.modal-dialog -->
     </div><!-- /.modal -->
+
 </div>
 </body>
 </html>

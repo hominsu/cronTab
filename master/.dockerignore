@@ -1,5 +1,5 @@
 **/.classpath
-**/.dockerignore
+.dockerignore
 **/.env
 **/.git
 **/.gitignore
@@ -14,7 +14,7 @@
 **/azds.yaml
 **/bin
 **/charts
-**/docker-compose*
+**/docker-compose.yml
 **/compose*
 **/Dockerfile*
 **/node_modules
@@ -26,3 +26,5 @@ README.md
 
 **/.idea
 **/etcd-data
+**/mongo-data
+**/*.dockerfile

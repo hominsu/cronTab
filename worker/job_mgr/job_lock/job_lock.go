@@ -1,8 +1,9 @@
-package jobMgr
+package job_lock
 
 import (
 	"context"
 	"cronTab/common"
+	"cronTab/worker/etcd_ops"
 	"go.etcd.io/etcd/client/v3"
 )
 
@@ -12,23 +13,23 @@ type JobLock struct {
 	lease   clientv3.Lease
 	JobName string // 任务名
 
-	cancelFunc context.CancelFunc // 终止自动续租
 	leaseId    clientv3.LeaseID   // 租约 ID
+	cancelFunc context.CancelFunc // 终止自动续租
 	isLocked   bool               // 是否上锁成功
 }
 
 // InitJobLock 初始化一把锁
-func InitJobLock(jobName string, kv clientv3.KV, lease clientv3.Lease) *JobLock {
+func InitJobLock(jobName string) *JobLock {
 	return &JobLock{
-		kv:       kv,
-		lease:    lease,
+		kv:       etcd_ops.EtcdCli.GetKv(),
+		lease:    etcd_ops.EtcdCli.GetLease(),
 		JobName:  jobName,
 		isLocked: false,
 	}
 }
 
-// tryLock 尝试上锁
-func (jobLock *JobLock) tryLock() error {
+// TryLock 尝试上锁
+func (jobLock *JobLock) TryLock() error {
 	// 1. 创建租约
 	leaseGrantResp, err := jobLock.lease.Grant(context.TODO(), 5)
 	if err != nil {
@@ -101,7 +102,7 @@ func (jobLock *JobLock) tryLock() error {
 	return nil
 }
 
-// 关闭续租并释放租约
+// revokeLease 关闭续租并释放租约
 func (jobLock *JobLock) revokeLease() error {
 	// 关闭自动续租的协程
 	jobLock.cancelFunc()
@@ -113,8 +114,8 @@ func (jobLock *JobLock) revokeLease() error {
 	return nil
 }
 
-// unLock 释放锁
-func (jobLock *JobLock) unLock() error {
+// UnLock 释放锁
+func (jobLock *JobLock) UnLock() error {
 	if jobLock.isLocked == true {
 		if err := jobLock.revokeLease(); err != nil {
 			return err

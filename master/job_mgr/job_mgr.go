@@ -1,15 +1,45 @@
-package etcdOps
+package job_mgr
 
 import (
 	"context"
 	"cronTab/common"
+	"cronTab/common/cron_job"
+	"cronTab/master/etcd_ops"
+	"cronTab/master/log_sink"
 	"errors"
 	"go.etcd.io/etcd/client/v3"
+	"strings"
 	"time"
 )
 
+type JobMgr struct {
+	kv    clientv3.KV
+	lease clientv3.Lease
+}
+
+var (
+	GJobMgr *JobMgr
+)
+
+func InitJobMgr() error {
+	var err error
+
+	// 获取 kv 和 lease
+	GJobMgr = &JobMgr{
+		kv:    etcd_ops.EtcdCli.GetKv(),
+		lease: etcd_ops.EtcdCli.GetLease(),
+	}
+
+	// 初始化日志池
+	if err = log_sink.InitLogSink(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // SaveJob 保存任务
-func (jobMgr *JobMgr) SaveJob(job *common.Job) (*common.Job, error) {
+func (jobMgr *JobMgr) SaveJob(job *cron_job.Job) (*cron_job.Job, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	defer cancel()
 
@@ -33,7 +63,7 @@ func (jobMgr *JobMgr) SaveJob(job *common.Job) (*common.Job, error) {
 	// 如果是更新，返回旧值
 	if putResp.PrevKv != nil {
 		// 对旧值进行反序列化
-		if oldJob, err := common.JobUnmarshal(putResp.PrevKv.Value); err != nil {
+		if oldJob, err := cron_job.JobUnmarshal(putResp.PrevKv.Value); err != nil {
 			return nil, nil
 		} else {
 			return oldJob, nil
@@ -44,7 +74,7 @@ func (jobMgr *JobMgr) SaveJob(job *common.Job) (*common.Job, error) {
 }
 
 // DeleteJob 删除任务
-func (jobMgr *JobMgr) DeleteJob(name string) (*common.Job, error) {
+func (jobMgr *JobMgr) DeleteJob(name string) (*cron_job.Job, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	defer cancel()
 
@@ -60,7 +90,7 @@ func (jobMgr *JobMgr) DeleteJob(name string) (*common.Job, error) {
 	// 如果删除的 key 存在
 	if delResp.PrevKvs != nil {
 		// 对旧值进行反序列化
-		if oldJob, err := common.JobUnmarshal(delResp.PrevKvs[0].Value); err != nil {
+		if oldJob, err := cron_job.JobUnmarshal(delResp.PrevKvs[0].Value); err != nil {
 			return nil, err
 		} else {
 			return oldJob, nil
@@ -71,7 +101,7 @@ func (jobMgr *JobMgr) DeleteJob(name string) (*common.Job, error) {
 }
 
 // ListJobs 列举任务
-func (jobMgr *JobMgr) ListJobs() ([]*common.Job, error) {
+func (jobMgr *JobMgr) ListJobs() ([]*cron_job.Job, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	defer cancel()
 
@@ -84,11 +114,11 @@ func (jobMgr *JobMgr) ListJobs() ([]*common.Job, error) {
 		return nil, err
 	}
 
-	var jobs []*common.Job
+	var jobs []*cron_job.Job
 	// 遍历所有任务，反序列化
 	for _, kv := range getResp.Kvs {
 		// 对旧值进行反序列化, 这里容忍了错误
-		job, err := common.JobUnmarshal(kv.Value)
+		job, err := cron_job.JobUnmarshal(kv.Value)
 		if err != nil {
 			// 值非法
 			continue
@@ -123,4 +153,22 @@ func (jobMgr *JobMgr) KillJob(name string) error {
 	}
 
 	return nil
+}
+
+// ListNodes 列出全部节点
+func (jobMgr *JobMgr) ListNodes() ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
+	defer cancel()
+
+	getResp, err := jobMgr.kv.Get(ctx, common.NodeIpNet, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	var nodes []string
+	for _, kv := range getResp.Kvs {
+		nodes = append(nodes, strings.TrimPrefix(string(kv.Key), common.NodeIpNet))
+	}
+
+	return nodes, nil
 }

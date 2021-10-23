@@ -1,12 +1,21 @@
 {
   "api 服务接口": "提供增删改查服务",
   "api_port": "8070",
+
   "etcd 集群列表": "配置多个, 避免单点故障",
   "etcd_endpoints": [
     "127.0.0.1:2379"
   ],
+
   "etcd 连接超时": "毫秒",
   "etcd_dail_timeout": 5000,
+
+  "mongodb 地址": "",
+  "mongodb_uri": "mongodb://root:example@127.0.0.1:27017",
+
+  "mongodb 连接超时时间": "ms",
+  "mongodb_connect_timeout": 5000,
+
   "web 页面根目录": "静态页面，前后端分离",
   "web_root": "./web"
 }

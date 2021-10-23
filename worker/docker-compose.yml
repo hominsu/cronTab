@@ -1,0 +1,23 @@
+version: '3.4'
+
+services:
+  crontab:
+    # DockerHub: hominsu/crontab-worker
+    # 阿里云仓库: registry.cn-shenzhen.aliyuncs.com/hominsu/crontab-worker
+    image: hominsu/crontab-worker
+    container_name: crontab-worker
+    build:
+      context: .
+      dockerfile: ../worker.dockerfile
+    restart: always
+    environment:
+      # 设置时区，不然 logs 的时间不对
+      TZ: "Asia/Shanghai" # 时区
+    networks:
+      net:
+        aliases:
+          - crontab-worker
+
+networks:
+  net:
+    driver: bridge
