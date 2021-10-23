@@ -10,7 +10,9 @@ import (
 )
 
 // GetLogBatch 获取 log
-func (logSink LogSink) GetLogBatch(name string) ([]*cron_job.JobLog, error) {
+func (logSink *LogSink) GetLogBatch(name string) ([]*cron_job.JobLog, error) {
+	var err error
+
 	ctx, cancel := context.WithTimeout(context.TODO(), 500*time.Millisecond)
 	defer cancel()
 
@@ -42,4 +44,20 @@ func (logSink LogSink) GetLogBatch(name string) ([]*cron_job.JobLog, error) {
 	}
 
 	return jobLogs, nil
+}
+
+// DelJobLog 删除任务日志
+func (logSink *LogSink) DelJobLog(name string) (int64, error) {
+	var err error
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
+	defer cancel()
+
+	// 删除
+	deleteResult, err := logSink.logCollection.DeleteMany(ctx, bson.M{"job_name": name})
+	if err != nil {
+		return 0, err
+	}
+
+	return deleteResult.DeletedCount, nil
 }

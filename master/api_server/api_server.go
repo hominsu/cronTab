@@ -16,6 +16,7 @@ func handlerRegister() *gin.Engine {
 	engine.Handle("POST", "/job/kill", handlerJobKill)
 	engine.Handle("GET", "/job/node", handlerNodeList)
 	engine.Handle("POST", "/job/log", handlerJobLogList)
+	engine.Handle("DELETE", "/job/log", handlerJobLogDelete)
 
 	// 静态
 	engine.Static("/static", config.GConfig.WebRoot)

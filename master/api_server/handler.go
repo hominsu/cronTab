@@ -116,6 +116,7 @@ func handlerJobLogList(c *gin.Context) {
 		return
 	}
 
+	// 获取任务日志
 	logs, err := log_sink.GLogSink.GetLogBatch(jobPaging.Name)
 	if err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
@@ -124,4 +125,26 @@ func handlerJobLogList(c *gin.Context) {
 
 	// 返回正常应答
 	common.ResponseJson(c, 0, "success", logs)
+}
+
+// 删除任务日志
+func handlerJobLogDelete(c *gin.Context) {
+	var err error
+
+	// 反序列化 JobPaging
+	jobPaging := &cron_job.JobPaging{}
+	if err = c.BindJSON(jobPaging); err != nil {
+		common.ResponseJson(c, -1, err.Error(), nil)
+		return
+	}
+
+	// 删除任务日志
+	delCount, err := log_sink.GLogSink.DelJobLog(jobPaging.Name)
+	if err != nil {
+		common.ResponseJson(c, -1, err.Error(), nil)
+		return
+	}
+
+	// 返回正常应答
+	common.ResponseJson(c, 0, "success", delCount)
 }
