@@ -4,6 +4,7 @@ import (
 	"cronTab/common"
 	"cronTab/common/cron_job"
 	"cronTab/worker/log_sink"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -89,7 +90,8 @@ func (scheduler *Scheduler) handlerJobResult(result *cron_job.JobExecResult) {
 	}
 
 	// 生成执行日志
-	if result.Err != common.ErrorLockAlreadyRequired {
+	//if result.Err != common.ErrorLockAlreadyRequired {
+	if !errors.Is(result.Err, common.ErrorLockAlreadyRequired) {
 		jobLog := &cron_job.JobLog{
 			JobName:      result.ExecInfo.Job.Name,
 			Command:      result.ExecInfo.Job.Command,

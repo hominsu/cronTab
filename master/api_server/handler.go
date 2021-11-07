@@ -17,6 +17,7 @@ func handlerJobSave(c *gin.Context) {
 	job := &cron_job.Job{}
 	if err = c.BindJSON(job); err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
+		common.ErrFmt(err)
 		return
 	}
 
@@ -24,6 +25,7 @@ func handlerJobSave(c *gin.Context) {
 	oldJob, err := job_mgr.GJobMgr.SaveJob(job)
 	if err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
+		common.ErrFmt(err)
 		return
 	}
 
@@ -40,6 +42,7 @@ func handlerJobDelete(c *gin.Context) {
 	job := &cron_job.Job{}
 	if err = c.BindJSON(job); err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
+		common.ErrFmt(err)
 		return
 	}
 
@@ -47,6 +50,7 @@ func handlerJobDelete(c *gin.Context) {
 	oldJob, err := job_mgr.GJobMgr.DeleteJob(job.Name)
 	if err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
+		common.ErrFmt(err)
 		return
 	}
 
@@ -62,6 +66,7 @@ func handlerJobList(c *gin.Context) {
 	jobList, err := job_mgr.GJobMgr.ListJobs()
 	if err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
+		common.ErrFmt(err)
 		return
 	}
 
@@ -77,12 +82,14 @@ func handlerJobKill(c *gin.Context) {
 	job := &cron_job.Job{}
 	if err = c.BindJSON(job); err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
+		common.ErrFmt(err)
 		return
 	}
 
 	// 删除任务
 	if err = job_mgr.GJobMgr.KillJob(job.Name); err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
+		common.ErrFmt(err)
 		return
 	}
 
@@ -98,6 +105,7 @@ func handlerNodeList(c *gin.Context) {
 	nodes, err := job_mgr.GJobMgr.ListNodes()
 	if err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
+		common.ErrFmt(err)
 		return
 	}
 
@@ -113,6 +121,7 @@ func handlerJobLogList(c *gin.Context) {
 	jobPaging := &cron_job.JobPaging{}
 	if err = c.BindJSON(jobPaging); err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
+		common.ErrFmt(err)
 		return
 	}
 
@@ -120,6 +129,7 @@ func handlerJobLogList(c *gin.Context) {
 	logs, err := log_sink.GLogSink.GetLogBatch(jobPaging.Name)
 	if err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
+		common.ErrFmt(err)
 		return
 	}
 
@@ -135,6 +145,7 @@ func handlerJobLogDelete(c *gin.Context) {
 	jobPaging := &cron_job.JobPaging{}
 	if err = c.BindJSON(jobPaging); err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
+		common.ErrFmt(err)
 		return
 	}
 
@@ -142,6 +153,7 @@ func handlerJobLogDelete(c *gin.Context) {
 	delCount, err := log_sink.GLogSink.DelJobLog(jobPaging.Name)
 	if err != nil {
 		common.ResponseJson(c, -1, err.Error(), nil)
+		common.ErrFmt(err)
 		return
 	}
 

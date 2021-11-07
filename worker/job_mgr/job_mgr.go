@@ -6,6 +6,7 @@ import (
 	"cronTab/common/cron_job"
 	"cronTab/worker/etcd_ops"
 	"cronTab/worker/log_sink"
+	terrors "github.com/pkg/errors"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3"
 	"time"
@@ -64,7 +65,7 @@ func (jobMgr *JobMgr) WatchJob() error {
 	// 1. Get /cron/jobs/ 目录下的所有任务, 并且获得当前集群的 Revision
 	getResp, err := jobMgr.kv.Get(ctx, common.JobSaveDir, clientv3.WithPrefix())
 	if err != nil {
-		return err
+		return terrors.Wrap(err, "get jobs info from etcd failed")
 	}
 
 	// 当前的任务

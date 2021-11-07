@@ -4,6 +4,7 @@ import (
 	"context"
 	"cronTab/common"
 	"cronTab/worker/etcd_ops"
+	terrors "github.com/pkg/errors"
 	"go.etcd.io/etcd/client/v3"
 	"net"
 	"time"
@@ -29,7 +30,7 @@ func (heartBeat *HeartBeat) StartHeartBeat() error {
 	// 1. 创建租约
 	leaseGrantResp, err := heartBeat.lease.Grant(context.TODO(), 5)
 	if err != nil {
-		return err
+		return terrors.Wrap(err, "create heart beat lease failed")
 	}
 
 	// 2. 自动续租
@@ -42,9 +43,9 @@ func (heartBeat *HeartBeat) StartHeartBeat() error {
 	keepRespChan, err := heartBeat.lease.KeepAlive(ctx, leaseId)
 	if err != nil {
 		if err := heartBeat.revokeLease(); err != nil {
-			return err
+			return terrors.Wrap(err, "revoke heart beat lease failed")
 		}
-		return err
+		return terrors.Wrap(err, "keep heart beat alive failed")
 	}
 
 	// 处理续租应答的协程
@@ -64,7 +65,7 @@ func (heartBeat *HeartBeat) StartHeartBeat() error {
 	// 获取当前节点 ip 地址
 	ipNetStr, err := nodeIpNet()
 	if err != nil {
-		return err
+		return terrors.Wrap(err, "get current node ip failed")
 	}
 
 	// 节点地址
@@ -72,9 +73,9 @@ func (heartBeat *HeartBeat) StartHeartBeat() error {
 
 	if _, err = heartBeat.kv.Put(context.TODO(), nodeIpNetKey, "", clientv3.WithLease(leaseId)); err != nil {
 		if err := heartBeat.revokeLease(); err != nil {
-			return err
+			return terrors.Wrap(err, "revoke heart beat lease failed")
 		}
-		return err
+		return terrors.Wrap(err, "put heart beat to etcd failed")
 	}
 
 	return nil
@@ -83,7 +84,7 @@ func (heartBeat *HeartBeat) StartHeartBeat() error {
 // EndHeartBeat 开始心跳
 func (heartBeat *HeartBeat) EndHeartBeat() error {
 	if err := heartBeat.revokeLease(); err != nil {
-		return err
+		return terrors.Wrap(err, "stop heart beat failed")
 	}
 	return nil
 }

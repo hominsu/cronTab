@@ -3,6 +3,7 @@ package etcd_ops
 import (
 	"context"
 	"cronTab/master/config"
+	terrors "github.com/pkg/errors"
 	"go.etcd.io/etcd/client/v3"
 	"time"
 )
@@ -33,7 +34,7 @@ func InitEtcdConn() error {
 
 	// 建立连接
 	if cli, err = clientv3.New(conf); err != nil {
-		return err
+		return terrors.Wrap(err, "create etcd connection failed")
 	}
 
 	EtcdCli = &etcdCli{
@@ -44,7 +45,7 @@ func InitEtcdConn() error {
 
 	// 测试 etcd 连接
 	if _, err = EtcdCli.kv.Get(ctx, "/cron"); err != nil {
-		return err
+		return terrors.Wrap(err, "test etcd connection failed")
 	}
 
 	return nil
@@ -53,7 +54,7 @@ func InitEtcdConn() error {
 // CloseEtcdConn 关闭 etcd 连接
 func CloseEtcdConn() error {
 	if err := EtcdCli.cli.Close(); err != nil {
-		return err
+		return terrors.Wrap(err, "disconnect etcd failed")
 	}
 	return nil
 }

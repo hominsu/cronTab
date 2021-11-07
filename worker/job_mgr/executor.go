@@ -1,9 +1,9 @@
 package job_mgr
 
 import (
+	"cronTab/common"
 	"cronTab/common/cron_job"
 	"cronTab/worker/job_mgr/job_lock"
-	"github.com/golang/glog"
 	"math/rand"
 	"os/exec"
 	"time"
@@ -45,7 +45,7 @@ func (executor *Executor) ExecJob(info *cron_job.JobExecInfo) {
 		// 释放锁
 		defer func(jobLock *job_lock.JobLock) {
 			if err := jobLock.UnLock(); err != nil {
-				glog.Warning(err)
+				common.ErrFmt(err)
 			}
 		}(jobLock)
 

@@ -3,6 +3,7 @@ package mongodb_ops
 import (
 	"context"
 	"cronTab/worker/config"
+	terrors "github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
@@ -25,12 +26,12 @@ func InitMongodbConn() error {
 			ApplyURI(config.GConfig.MongodbUri).
 			SetConnectTimeout(time.Duration(config.GConfig.MongodbConnectTimeout)*time.Millisecond))
 	if err != nil {
-		return err
+		return terrors.Wrap(err, "create mongodb connection failed")
 	}
 
 	// 测试 mongodb 连接
 	if err = MongodbCli.Ping(ctx, nil); err != nil {
-		return err
+		return terrors.Wrap(err, "test mongodb connection failed")
 	}
 
 	return nil
@@ -42,7 +43,7 @@ func CloseMongodbConn() error {
 	defer cancel()
 
 	if err := MongodbCli.Disconnect(ctx); err != nil {
-		return err
+		return terrors.Wrap(err, "disconnect mongodb failed")
 	}
 	return nil
 }
