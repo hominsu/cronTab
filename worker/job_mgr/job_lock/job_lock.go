@@ -47,7 +47,7 @@ func (jobLock *JobLock) TryLock() error {
 	keepRespChan, err := jobLock.lease.KeepAlive(ctx, leaseId)
 	if err != nil {
 		if err := jobLock.revokeLease(); err != nil {
-			return terrors.Wrap(err, "revoke job lock lease failed")
+			return err
 		}
 		return terrors.Wrap(err, "keep job lock alive failed")
 	}
@@ -83,7 +83,7 @@ func (jobLock *JobLock) TryLock() error {
 	txnResp, err := txn.Commit()
 	if err != nil {
 		if err := jobLock.revokeLease(); err != nil {
-			return terrors.Wrap(err, "revoke job lock txn lease failed")
+			return err
 		}
 		return terrors.Wrap(err, "commit job lock txn failed")
 	}
@@ -92,7 +92,7 @@ func (jobLock *JobLock) TryLock() error {
 	// 抢锁失败
 	if !txnResp.Succeeded {
 		if err := jobLock.revokeLease(); err != nil {
-			return terrors.Wrap(err, "revoke job lock lease failed")
+			return err
 		}
 		return terrors.Wrap(common.ErrorLockAlreadyRequired, "can not get the lock")
 	}
@@ -110,7 +110,7 @@ func (jobLock *JobLock) revokeLease() error {
 
 	// 释放租约
 	if _, err := jobLock.lease.Revoke(context.TODO(), jobLock.leaseId); err != nil {
-		return err
+		return terrors.Wrap(err, "revoke job lock lease failed")
 	}
 	return nil
 }
@@ -119,7 +119,7 @@ func (jobLock *JobLock) revokeLease() error {
 func (jobLock *JobLock) UnLock() error {
 	if jobLock.isLocked == true {
 		if err := jobLock.revokeLease(); err != nil {
-			return terrors.Wrap(err, "revoke job lock lease")
+			return terrors.WithMessage(err, "unlock failed")
 		}
 	}
 	return nil
