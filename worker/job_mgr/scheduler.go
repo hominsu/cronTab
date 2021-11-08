@@ -31,9 +31,6 @@ func InitScheduler() error {
 		jobResultChan:     make(chan *cron_job.JobExecResult, 1000),
 	}
 
-	// 启动调度协程
-	go GScheduler.schedulerLoop()
-
 	return nil
 }
 
@@ -42,8 +39,8 @@ func (scheduler *Scheduler) PushJobEvent(jobEvent *cron_job.JobEvent) {
 	scheduler.jobEventChan <- jobEvent
 }
 
-// 调度协程
-func (scheduler *Scheduler) schedulerLoop() {
+// SchedulerLoop 调度协程
+func (scheduler *Scheduler) SchedulerLoop(stop <-chan struct{}) error {
 	// 初始化调度的延时定时器
 	schedulerTimer := time.NewTimer(scheduler.tryScheduler())
 
@@ -54,6 +51,13 @@ func (scheduler *Scheduler) schedulerLoop() {
 			scheduler.handlerJobEvent(jobEvent)
 		case jobResult := <-scheduler.jobResultChan: // 监听任务执行结果
 			scheduler.handlerJobResult(jobResult)
+		case <-stop:
+			// 取消正在执行的任务
+			for _, jobExecInfo := range scheduler.jobExecutingTable {
+				jobExecInfo.CancelFunc()
+				delete(scheduler.jobExecutingTable, jobExecInfo.Job.Name)
+			}
+			return nil
 		}
 		// 调度一次任务并重置调度间隔
 		schedulerTimer.Reset(scheduler.tryScheduler())

@@ -58,11 +58,11 @@ function NodeCallBack() {
             // 任务数组
             const nodeList = resp.data;
 
-            if (nodeList != null) {
-                // 清理列表
-                const node_list_tbody = $('#node-list tbody')
-                node_list_tbody.empty()
+            // 清理列表
+            const node_list_tbody = $('#node-list tbody')
+            node_list_tbody.empty()
 
+            if (nodeList !== null) {
                 // 遍历任务, 填充 table
                 for (let i = 0; i < nodeList.length; ++i) {
                     node_list_tbody.append($("<tr>").append($('<td>').html(nodeList[i])))

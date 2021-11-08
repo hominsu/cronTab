@@ -1,28 +1,6 @@
 version: '3.4'
 
 services:
-  crontab:
-    # DockerHub: hominsu/crontab-master
-    # 阿里云仓库: registry.cn-shenzhen.aliyuncs.com/hominsu/crontab-master
-    image: hominsu/crontab-master
-    container_name: crontab-master
-    build:
-      context: .
-      dockerfile: ../master.dockerfile
-    restart: always
-    depends_on:
-      - etcd
-      - mongo
-    environment:
-      # 设置时区，不然 logs 的时间不对
-      TZ: "Asia/Shanghai" # 时区
-    ports:
-      - "8070:8070"
-    networks:
-      net:
-        aliases:
-          - crontab-master
-
   etcd:
     image: gcr.io/etcd-development/etcd:v3.4.17-arm64
     container_name: etcd-gcr-v3.4.17

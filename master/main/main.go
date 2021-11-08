@@ -8,7 +8,6 @@ import (
 	"cronTab/master/job_mgr"
 	"cronTab/master/mongodb_ops"
 	"flag"
-	"github.com/golang/glog"
 	"runtime"
 )
 
@@ -33,8 +32,6 @@ func main() {
 
 	// 初始化命令行参数
 	initArgs()
-
-	defer glog.Flush()
 
 	// 初始化线程
 	initProcess()
@@ -71,7 +68,7 @@ func main() {
 		common.ErrFmtWithExit(err, 1)
 	}
 
-	// 启动 Http 服务
+	// 启动 Http 服务, block
 	if err = api_server.InitApiServer(); err != nil {
 		common.ErrFmtWithExit(err, 1)
 	}

@@ -12,8 +12,10 @@ var (
 )
 
 func ErrFmt(err error) {
-	fmt.Printf("original error: %T %v\n", terrors.Cause(err), terrors.Cause(err))
-	fmt.Printf("stack trace: \n%+v\n", err)
+	if err != nil {
+		fmt.Printf("original error: %T %v\n", terrors.Cause(err), terrors.Cause(err))
+		fmt.Printf("stack trace: \n%+v\n", err)
+	}
 }
 
 func ErrFmtWithExit(err error, code int) {

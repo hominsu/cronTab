@@ -22,8 +22,8 @@ type JobLock struct {
 // InitJobLock 初始化一把锁
 func InitJobLock(jobName string) *JobLock {
 	return &JobLock{
-		kv:       etcd_ops.EtcdCli.GetKv(),
-		lease:    etcd_ops.EtcdCli.GetLease(),
+		kv:       etcd_ops.GetKv(),
+		lease:    etcd_ops.GetLease(),
 		JobName:  jobName,
 		isLocked: false,
 	}
