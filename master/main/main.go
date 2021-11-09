@@ -1,13 +1,13 @@
 package main
 
 import (
+	"cronTab/common"
 	"cronTab/master/api_server"
 	"cronTab/master/config"
 	"cronTab/master/etcd_ops"
 	"cronTab/master/job_mgr"
 	"cronTab/master/mongodb_ops"
 	"flag"
-	"github.com/golang/glog"
 	"runtime"
 )
 
@@ -33,45 +33,43 @@ func main() {
 	// 初始化命令行参数
 	initArgs()
 
-	defer glog.Flush()
-
 	// 初始化线程
 	initProcess()
 
 	// 加载配置
 	if err = config.InitialConfig(confFile); err != nil {
-		glog.Fatal(err)
+		common.ErrFmtWithExit(err, 1)
 	}
 
 	// 连接 etcd
 	if err = etcd_ops.InitEtcdConn(); err != nil {
-		glog.Fatal(err)
+		common.ErrFmtWithExit(err, 1)
 	}
 	defer func() {
 		err := etcd_ops.CloseEtcdConn()
 		if err != nil {
-			glog.Fatal(err)
+			common.ErrFmt(err)
 		}
 	}()
 
 	// 连接 mongodb
 	if err = mongodb_ops.InitMongodbConn(); err != nil {
-		glog.Fatal(err)
+		common.ErrFmtWithExit(err, 1)
 	}
 	defer func() {
 		err := mongodb_ops.CloseMongodbConn()
 		if err != nil {
-			glog.Fatal(err)
+			common.ErrFmt(err)
 		}
 	}()
 
 	// 任务管理
 	if err = job_mgr.InitJobMgr(); err != nil {
-		glog.Fatal(err)
+		common.ErrFmtWithExit(err, 1)
 	}
 
-	// 启动 Http 服务
+	// 启动 Http 服务, block
 	if err = api_server.InitApiServer(); err != nil {
-		glog.Fatal(err)
+		common.ErrFmtWithExit(err, 1)
 	}
 }

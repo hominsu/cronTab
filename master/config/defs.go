@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	terrors "github.com/pkg/errors"
 	"io/ioutil"
 )
 
@@ -23,13 +24,13 @@ func InitialConfig(filename string) (err error) {
 	// 读配置文件
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return err
+		return terrors.Wrap(err, "read conf file bytes failed")
 	}
 
 	// json 反序列化
 	conf := &Config{}
 	if err = json.Unmarshal(bytes, conf); err != nil {
-		return err
+		return terrors.Wrap(err, "unmarshal conf file bytes failed")
 	}
 
 	// 单例赋值

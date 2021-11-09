@@ -4,6 +4,7 @@ import (
 	"context"
 	"cronTab/common"
 	"cronTab/worker/etcd_ops"
+	terrors "github.com/pkg/errors"
 	"go.etcd.io/etcd/client/v3"
 )
 
@@ -21,8 +22,8 @@ type JobLock struct {
 // InitJobLock 初始化一把锁
 func InitJobLock(jobName string) *JobLock {
 	return &JobLock{
-		kv:       etcd_ops.EtcdCli.GetKv(),
-		lease:    etcd_ops.EtcdCli.GetLease(),
+		kv:       etcd_ops.GetKv(),
+		lease:    etcd_ops.GetLease(),
 		JobName:  jobName,
 		isLocked: false,
 	}
@@ -33,7 +34,7 @@ func (jobLock *JobLock) TryLock() error {
 	// 1. 创建租约
 	leaseGrantResp, err := jobLock.lease.Grant(context.TODO(), 5)
 	if err != nil {
-		return err
+		return terrors.Wrap(err, "create job lock lease failed")
 	}
 
 	// 2. 自动续租
@@ -48,7 +49,7 @@ func (jobLock *JobLock) TryLock() error {
 		if err := jobLock.revokeLease(); err != nil {
 			return err
 		}
-		return err
+		return terrors.Wrap(err, "keep job lock alive failed")
 	}
 
 	// 处理续租应答的协程
@@ -84,7 +85,7 @@ func (jobLock *JobLock) TryLock() error {
 		if err := jobLock.revokeLease(); err != nil {
 			return err
 		}
-		return err
+		return terrors.Wrap(err, "commit job lock txn failed")
 	}
 
 	// 5. 成功返回, 失败释放租约
@@ -93,7 +94,7 @@ func (jobLock *JobLock) TryLock() error {
 		if err := jobLock.revokeLease(); err != nil {
 			return err
 		}
-		return common.ErrorLockAlreadyRequired
+		return terrors.Wrap(common.ErrorLockAlreadyRequired, "can not get the lock")
 	}
 
 	// 抢锁成功
@@ -109,7 +110,7 @@ func (jobLock *JobLock) revokeLease() error {
 
 	// 释放租约
 	if _, err := jobLock.lease.Revoke(context.TODO(), jobLock.leaseId); err != nil {
-		return err
+		return terrors.Wrap(err, "revoke job lock lease failed")
 	}
 	return nil
 }
@@ -118,7 +119,7 @@ func (jobLock *JobLock) revokeLease() error {
 func (jobLock *JobLock) UnLock() error {
 	if jobLock.isLocked == true {
 		if err := jobLock.revokeLease(); err != nil {
-			return err
+			return terrors.WithMessage(err, "unlock failed")
 		}
 	}
 	return nil

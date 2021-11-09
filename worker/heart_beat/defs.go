@@ -4,32 +4,49 @@ import (
 	"context"
 	"cronTab/common"
 	"cronTab/worker/etcd_ops"
+	terrors "github.com/pkg/errors"
 	"go.etcd.io/etcd/client/v3"
 	"net"
 	"time"
 )
 
-type HeartBeat struct {
+type heartBeat struct {
 	kv         clientv3.KV
 	lease      clientv3.Lease
 	leaseId    clientv3.LeaseID   // 租约 ID
 	cancelFunc context.CancelFunc // 终止自动续租
 }
 
+var (
+	hb *heartBeat
+)
+
 // InitHeartBeat 初始化心跳
-func InitHeartBeat() *HeartBeat {
-	return &HeartBeat{
-		kv:    etcd_ops.EtcdCli.GetKv(),
-		lease: etcd_ops.EtcdCli.GetLease(),
+func InitHeartBeat() error {
+	hb = &heartBeat{
+		kv:    etcd_ops.GetKv(),
+		lease: etcd_ops.GetLease(),
 	}
+	if err := hb.startHeartBeat(); err != nil {
+		return err
+	}
+	return nil
 }
 
-// StartHeartBeat 开始心跳
-func (heartBeat *HeartBeat) StartHeartBeat() error {
+// StopHeartBeat 停止心跳
+func StopHeartBeat() error {
+	if err := hb.endHeartBeat(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// startHeartBeat 开始心跳
+func (heartBeat *heartBeat) startHeartBeat() error {
 	// 1. 创建租约
 	leaseGrantResp, err := heartBeat.lease.Grant(context.TODO(), 5)
 	if err != nil {
-		return err
+		return terrors.Wrap(err, "create heart beat lease failed")
 	}
 
 	// 2. 自动续租
@@ -44,7 +61,7 @@ func (heartBeat *HeartBeat) StartHeartBeat() error {
 		if err := heartBeat.revokeLease(); err != nil {
 			return err
 		}
-		return err
+		return terrors.Wrap(err, "keep heart beat alive failed")
 	}
 
 	// 处理续租应答的协程
@@ -64,7 +81,7 @@ func (heartBeat *HeartBeat) StartHeartBeat() error {
 	// 获取当前节点 ip 地址
 	ipNetStr, err := nodeIpNet()
 	if err != nil {
-		return err
+		return terrors.Wrap(err, "get current node ip failed")
 	}
 
 	// 节点地址
@@ -74,22 +91,22 @@ func (heartBeat *HeartBeat) StartHeartBeat() error {
 		if err := heartBeat.revokeLease(); err != nil {
 			return err
 		}
-		return err
+		return terrors.Wrap(err, "put heart beat to etcd failed")
 	}
 
 	return nil
 }
 
-// EndHeartBeat 开始心跳
-func (heartBeat *HeartBeat) EndHeartBeat() error {
+// endHeartBeat 开始心跳
+func (heartBeat *heartBeat) endHeartBeat() error {
 	if err := heartBeat.revokeLease(); err != nil {
-		return err
+		return terrors.Wrap(err, "stop heart beat failed")
 	}
 	return nil
 }
 
 // revokeLease 关闭续租并释放租约
-func (heartBeat *HeartBeat) revokeLease() error {
+func (heartBeat *heartBeat) revokeLease() error {
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	defer cancel()
 
@@ -98,7 +115,7 @@ func (heartBeat *HeartBeat) revokeLease() error {
 
 	// 释放租约
 	if _, err := heartBeat.lease.Revoke(ctx, heartBeat.leaseId); err != nil {
-		return err
+		return terrors.Wrap(err, "revoke heart beat lease failed")
 	}
 	return nil
 }
@@ -113,7 +130,6 @@ func nodeIpNet() (string, error) {
 	for _, interFace := range netInterFaces {
 		if (interFace.Flags & net.FlagUp) != 0 {
 			addrs, _ := interFace.Addrs()
-
 			for _, addr := range addrs {
 				if ipNet, ok := addr.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
 					if ipNet.IP.To4() != nil {

@@ -7,6 +7,7 @@ import (
 	"cronTab/master/etcd_ops"
 	"cronTab/master/log_sink"
 	"errors"
+	terrors "github.com/pkg/errors"
 	"go.etcd.io/etcd/client/v3"
 	"strings"
 	"time"
@@ -51,13 +52,13 @@ func (jobMgr *JobMgr) SaveJob(job *cron_job.Job) (*cron_job.Job, error) {
 	// 任务信息
 	jobValue, err := job.JobMarshal()
 	if err != nil {
-		return nil, err
+		return nil, terrors.Wrap(err, "marshal save job info failed")
 	}
 
 	// 保存到 etcd
 	putResp, err := jobMgr.kv.Put(ctx, jobKey, string(jobValue), clientv3.WithPrevKV())
 	if err != nil {
-		return nil, err
+		return nil, terrors.Wrap(err, "put job info to etcd failed")
 	}
 
 	// 如果是更新，返回旧值
@@ -84,14 +85,14 @@ func (jobMgr *JobMgr) DeleteJob(name string) (*cron_job.Job, error) {
 	// 删除任务
 	delResp, err := jobMgr.kv.Delete(ctx, jobKey, clientv3.WithPrevKV())
 	if err != nil {
-		return nil, err
+		return nil, terrors.Wrap(err, "delete job info from etcd failed")
 	}
 
 	// 如果删除的 key 存在
 	if delResp.PrevKvs != nil {
 		// 对旧值进行反序列化
 		if oldJob, err := cron_job.JobUnmarshal(delResp.PrevKvs[0].Value); err != nil {
-			return nil, err
+			return nil, terrors.Wrap(err, "unmarshal delete job info failed")
 		} else {
 			return oldJob, nil
 		}
@@ -111,7 +112,7 @@ func (jobMgr *JobMgr) ListJobs() ([]*cron_job.Job, error) {
 	// 获取目录下所有任务信息
 	getResp, err := jobMgr.kv.Get(ctx, dirKey, clientv3.WithPrefix())
 	if err != nil {
-		return nil, err
+		return nil, terrors.Wrap(err, "get jobs info from etcd failed")
 	}
 
 	var jobs []*cron_job.Job
@@ -140,7 +141,7 @@ func (jobMgr *JobMgr) KillJob(name string) error {
 	// 让 worker 监听一次 put 操作, 创建一个租约让其稍后过期
 	leaseGrantResp, err := jobMgr.lease.Grant(ctx, 1)
 	if err != nil {
-		return err
+		return terrors.Wrap(err, "create kill key lease failed")
 	}
 
 	// 租约 id
@@ -149,7 +150,7 @@ func (jobMgr *JobMgr) KillJob(name string) error {
 	// 设置 kill 标记
 	_, err = jobMgr.kv.Put(ctx, killKey, "", clientv3.WithLease(leaseId))
 	if err != nil {
-		return err
+		return terrors.Wrap(err, "put kill key to etcd failed")
 	}
 
 	return nil
@@ -162,7 +163,7 @@ func (jobMgr *JobMgr) ListNodes() ([]string, error) {
 
 	getResp, err := jobMgr.kv.Get(ctx, common.NodeIpNet, clientv3.WithPrefix())
 	if err != nil {
-		return nil, err
+		return nil, terrors.Wrap(err, "get nodes info from etcd failed")
 	}
 
 	var nodes []string

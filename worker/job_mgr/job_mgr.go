@@ -5,7 +5,7 @@ import (
 	"cronTab/common"
 	"cronTab/common/cron_job"
 	"cronTab/worker/etcd_ops"
-	"cronTab/worker/log_sink"
+	terrors "github.com/pkg/errors"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3"
 	"time"
@@ -17,54 +17,43 @@ type JobMgr struct {
 	watcher clientv3.Watcher
 }
 
+var (
+	jobMgr *JobMgr
+)
+
 // InitJobMgr 初始化 JobMgr
-func InitJobMgr() error {
+func InitJobMgr() (*JobMgr, error) {
 	var err error
 
 	// 获取 kv 和 lease
-	jobMgr := &JobMgr{
-		kv:      etcd_ops.EtcdCli.GetKv(),
-		lease:   etcd_ops.EtcdCli.GetLease(),
-		watcher: etcd_ops.EtcdCli.GetWatcher(),
-	}
-
-	// 启动日志池
-	if err = log_sink.InitLogSink(); err != nil {
-		return err
+	jobMgr = &JobMgr{
+		kv:      etcd_ops.GetKv(),
+		lease:   etcd_ops.GetLease(),
+		watcher: etcd_ops.GetWatcher(),
 	}
 
 	// 启动执行器
 	if err = InitExecutor(); err != nil {
-		return err
+		return nil, err
 	}
 
 	// 启动调度
 	if err = InitScheduler(); err != nil {
-		return err
+		return nil, err
 	}
 
-	// 启动任务监听
-	if err = jobMgr.WatchJob(); err != nil {
-		return err
-	}
-
-	// 启动强杀监听
-	if err = jobMgr.WatchKill(); err != nil {
-		return err
-	}
-
-	return nil
+	return jobMgr, nil
 }
 
-// WatchJob 监听任务
-func (jobMgr *JobMgr) WatchJob() error {
+// GetJobRevision 监听任务
+func (jobMgr *JobMgr) GetJobRevision() (int64, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	defer cancel()
 
 	// 1. Get /cron/jobs/ 目录下的所有任务, 并且获得当前集群的 Revision
 	getResp, err := jobMgr.kv.Get(ctx, common.JobSaveDir, clientv3.WithPrefix())
 	if err != nil {
-		return err
+		return 0, terrors.Wrap(err, "get jobs info from etcd failed")
 	}
 
 	// 当前的任务
@@ -82,19 +71,21 @@ func (jobMgr *JobMgr) WatchJob() error {
 	// 从 GET 时刻的后续版本开始监听变化
 	watchStartRevision := getResp.Header.Revision + 1
 
-	// 监听协程
-	go watchJobFunc(jobMgr, watchStartRevision)
-
-	return nil
+	return watchStartRevision, nil
 }
 
-// 监听任务变化函数
-func watchJobFunc(jobMgr *JobMgr, watchStartRevision int64) {
+// WatchJob 监听任务变化函数
+func (jobMgr *JobMgr) WatchJob(watchStartRevision int64, stop <-chan struct{}) error {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
 	// 监听 /cron/jobs/ 目录的后续变化
 	watchChan := jobMgr.watcher.Watch(ctx, common.JobSaveDir, clientv3.WithRev(watchStartRevision), clientv3.WithPrefix())
+
+	go func() {
+		<-stop
+		cancel()
+	}()
 
 	for watchResp := range watchChan {
 		for _, ev := range watchResp.Events {
@@ -116,23 +107,22 @@ func watchJobFunc(jobMgr *JobMgr, watchStartRevision int64) {
 			GScheduler.PushJobEvent(jobEvent)
 		}
 	}
-}
-
-// WatchKill 监听强杀任务
-func (jobMgr *JobMgr) WatchKill() error {
-	// 监听协程
-	go watchKillFunc(jobMgr)
 
 	return nil
 }
 
-// 监听强杀变化函数
-func watchKillFunc(jobMgr *JobMgr) {
+// WatchKill 监听强杀变化函数
+func (jobMgr *JobMgr) WatchKill(stop <-chan struct{}) error {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
 	// 监听 /cron/kill/ 目录的变化
 	watchChan := jobMgr.watcher.Watch(ctx, common.JobKillDir, clientv3.WithPrefix())
+
+	go func() {
+		<-stop
+		cancel()
+	}()
 
 	for watchResp := range watchChan {
 		for _, ev := range watchResp.Events {
@@ -146,4 +136,6 @@ func watchKillFunc(jobMgr *JobMgr) {
 			}
 		}
 	}
+
+	return nil
 }

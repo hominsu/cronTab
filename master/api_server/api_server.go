@@ -3,6 +3,7 @@ package api_server
 import (
 	"cronTab/master/config"
 	"github.com/gin-gonic/gin"
+	terrors "github.com/pkg/errors"
 	"net/http"
 	"path"
 )
@@ -38,7 +39,7 @@ func InitApiServer() error {
 
 	// 监听
 	if err := engine.Run(":" + config.GConfig.ApiPort); err != nil {
-		return err
+		return terrors.Wrap(err, "run gin engine failed")
 	}
 
 	return nil

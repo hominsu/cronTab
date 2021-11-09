@@ -3,6 +3,7 @@ package etcd_ops
 import (
 	"context"
 	"cronTab/worker/config"
+	terrors "github.com/pkg/errors"
 	"go.etcd.io/etcd/client/v3"
 	"time"
 )
@@ -16,7 +17,7 @@ type etcdCli struct {
 }
 
 var (
-	EtcdCli *etcdCli
+	etcdC *etcdCli
 )
 
 // InitEtcdConn 初始化 etcd 连接
@@ -34,10 +35,10 @@ func InitEtcdConn() error {
 
 	// 建立连接
 	if cli, err = clientv3.New(conf); err != nil {
-		return err
+		return terrors.Wrap(err, "create etcd connection failed")
 	}
 
-	EtcdCli = &etcdCli{
+	etcdC = &etcdCli{
 		cli:     cli,
 		kv:      clientv3.NewKV(cli),
 		lease:   clientv3.NewLease(cli),
@@ -45,8 +46,8 @@ func InitEtcdConn() error {
 	}
 
 	// 测试 etcd 连接
-	if _, err = EtcdCli.kv.Get(ctx, "/cron"); err != nil {
-		return err
+	if _, err = etcdC.kv.Get(ctx, "/cron"); err != nil {
+		return terrors.Wrap(err, "test etcd connection failed")
 	}
 
 	return nil
@@ -54,23 +55,23 @@ func InitEtcdConn() error {
 
 // CloseEtcdConn 关闭 etcd 连接
 func CloseEtcdConn() error {
-	if err := EtcdCli.cli.Close(); err != nil {
-		return err
+	if err := etcdC.cli.Close(); err != nil {
+		return terrors.Wrap(err, "disconnect etcd failed")
 	}
 	return nil
 }
 
 // GetKv 返回 etcd 的 kv
-func (e etcdCli) GetKv() clientv3.KV {
-	return e.kv
+func GetKv() clientv3.KV {
+	return etcdC.kv
 }
 
 // GetLease 返回 etcd 的 lease
-func (e etcdCli) GetLease() clientv3.Lease {
-	return e.lease
+func GetLease() clientv3.Lease {
+	return etcdC.lease
 }
 
 // GetWatcher 返回 etcd 的 watcher
-func (e etcdCli) GetWatcher() clientv3.Watcher {
-	return e.watcher
+func GetWatcher() clientv3.Watcher {
+	return etcdC.watcher
 }

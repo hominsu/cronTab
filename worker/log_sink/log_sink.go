@@ -2,9 +2,10 @@ package log_sink
 
 import (
 	"context"
+	"cronTab/common"
 	"cronTab/common/cron_job"
 	"cronTab/worker/config"
-	"github.com/golang/glog"
+	terrors "github.com/pkg/errors"
 	"time"
 )
 
@@ -17,8 +18,8 @@ func (logSink *LogSink) Append(jobLog *cron_job.JobLog) {
 	}
 }
 
-// 日志存储协程
-func (logSink *LogSink) writeLoop() {
+// WriteLoop 日志存储协程
+func (logSink *LogSink) WriteLoop(stop <-chan struct{}) error {
 	var logBatch *cron_job.LogBatch
 	var commitTimer *time.Timer
 
@@ -43,15 +44,13 @@ func (logSink *LogSink) writeLoop() {
 
 			// 如果批次满了就立即发送
 			if len(logBatch.Logs) >= config.GConfig.JobLogBatchSize {
-				// 发送函数
 				if err := logSink.saveLogs(logBatch); err != nil {
-					glog.Warning(err)
+					common.ErrFmt(err)
 				}
-				// 清空 logBatch
 				logBatch = nil
-				// 取消定时器
 				commitTimer.Stop()
 			}
+
 		case timeoutBatch := <-logSink.autoCommitChan: // 过期的批次
 			// 判断过期批次是否仍是当前批次
 			if timeoutBatch != logBatch {
@@ -59,10 +58,20 @@ func (logSink *LogSink) writeLoop() {
 			}
 			// 把这个批次写入到 mongodb
 			if err := logSink.saveLogs(timeoutBatch); err != nil {
-				glog.Warning(err)
+				common.ErrFmt(err)
 			}
-			// 清空 logBatch
 			logBatch = nil
+
+		case <-stop:
+			// 平滑退出，退出前把日志写到 mongodb
+			if logBatch != nil {
+				if err := logSink.saveLogs(logBatch); err != nil {
+					return err
+				}
+				logBatch = nil
+			}
+			commitTimer.Stop()
+			return nil
 		}
 	}
 }
@@ -73,7 +82,7 @@ func (logSink *LogSink) saveLogs(batch *cron_job.LogBatch) error {
 	defer cancel()
 
 	if _, err := logSink.logCollection.InsertMany(ctx, batch.Logs); err != nil {
-		return err
+		return terrors.Wrap(err, "log sink insert job log failed")
 	}
 	return nil
 }
