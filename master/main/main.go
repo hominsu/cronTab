@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"cronTab/common"
 	"cronTab/master/api_server"
 	"cronTab/master/config"
@@ -8,7 +9,13 @@ import (
 	"cronTab/master/job_mgr"
 	"cronTab/master/mongodb_ops"
 	"flag"
+	"github.com/gin-gonic/gin"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 )
 
 var (
@@ -21,10 +28,20 @@ func initArgs() {
 	flag.Parse()
 }
 
-// 初始化线程
-func initProcess() {
-	// 设置线程数等于核心数
-	runtime.GOMAXPROCS(runtime.NumCPU())
+func ginServe(handler *gin.Engine, stop chan struct{}) error {
+	s := http.Server{
+		Addr:    ":" + config.GConfig.ApiPort,
+		Handler: handler,
+	}
+
+	go func() {
+		<-stop
+		if err := s.Shutdown(context.Background()); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	return s.ListenAndServe() // shutdown 之后会 return
 }
 
 func main() {
@@ -34,12 +51,32 @@ func main() {
 	initArgs()
 
 	// 初始化线程
-	initProcess()
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	// 加载配置
 	if err = config.InitialConfig(confFile); err != nil {
 		common.ErrFmtWithExit(err, 1)
 	}
+
+	done := make(chan bool)
+	ch := make(chan os.Signal)
+
+	// 监听退出信号
+	signal.Notify(ch, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	go func(done chan bool) {
+		for s := range ch {
+			switch s {
+			case syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT:
+				log.Println("Program Exit...", s)
+				done <- true
+			default:
+				log.Println("Other signal", s)
+			}
+		}
+	}(done)
+
+	errors := make(chan error, 1)
+	stop := make(chan struct{})
 
 	// 连接 etcd
 	if err = etcd_ops.InitEtcdConn(); err != nil {
@@ -68,8 +105,22 @@ func main() {
 		common.ErrFmtWithExit(err, 1)
 	}
 
-	// 启动 Http 服务, block
-	if err = api_server.InitApiServer(); err != nil {
-		common.ErrFmtWithExit(err, 1)
+	// 设置 gin 为 release 模式
+	gin.SetMode(gin.ReleaseMode)
+
+	// web 服务
+	go func() {
+		errors <- ginServe(api_server.HandlerRegister(), stop)
+	}()
+
+	// 阻塞等待退出
+	<-done
+
+	// 平滑退出
+	close(stop)
+	for i := 0; i < cap(errors); i++ {
+		if err := <-errors; err != nil {
+			log.Println(err)
+		}
 	}
 }

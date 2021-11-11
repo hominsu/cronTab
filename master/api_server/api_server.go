@@ -3,12 +3,11 @@ package api_server
 import (
 	"cronTab/master/config"
 	"github.com/gin-gonic/gin"
-	terrors "github.com/pkg/errors"
 	"net/http"
 	"path"
 )
 
-func handlerRegister() *gin.Engine {
+func HandlerRegister() *gin.Engine {
 	engine := gin.Default()
 
 	engine.Handle("POST", "/job", handlerJobSave)
@@ -28,19 +27,4 @@ func handlerRegister() *gin.Engine {
 	})
 
 	return engine
-}
-
-func InitApiServer() error {
-	// 设置 gin 为 release 模式
-	gin.SetMode(gin.ReleaseMode)
-
-	// 注册 api_server
-	engine := handlerRegister()
-
-	// 监听
-	if err := engine.Run(":" + config.GConfig.ApiPort); err != nil {
-		return terrors.Wrap(err, "run gin engine failed")
-	}
-
-	return nil
 }
