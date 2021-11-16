@@ -1,0 +1,90 @@
+version: '3.4'
+
+services:
+  crontab:
+    # DockerHub: hominsu/crontab-master
+    # 阿里云仓库: registry.cn-shenzhen.aliyuncs.com/hominsu/crontab-master
+    image: hominsu/crontab-master
+    container_name: crontab-master
+    build:
+      context: ""
+      dockerfile: ../../master.dockerfile
+    restart: always
+    depends_on:
+      - etcd
+      - mongo
+    environment:
+      # 设置时区，不然 logs 的时间不对
+      TZ: "Asia/Shanghai" # 时区
+    ports:
+      - "8070:8070"
+    networks:
+      net:
+        aliases:
+          - crontab-master
+
+  etcd:
+    image: gcr.io/etcd-development/etcd:v3.4.17-arm64
+    container_name: etcd-gcr-v3.4.17
+    restart: always
+    environment:
+      ETCD_UNSUPPORTED_ARCH: "arm64"
+    command: "/usr/local/bin/etcd
+    --name s1 \
+    --data-dir /etcd-data \
+    --listen-client-urls http://0.0.0.0:2379 \
+    --advertise-client-urls http://0.0.0.0:2379 \
+    --listen-peer-urls http://0.0.0.0:2380 \
+    --initial-advertise-peer-urls http://0.0.0.0:2380 \
+    --initial-cluster s1=http://0.0.0.0:2380 \
+    --initial-cluster-token tkn \
+    --initial-cluster-state new \
+    --log-level info \
+    --logger zap \
+    --log-outputs stderr"
+    volumes:
+      - ./etcd-data:/etcd-data
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    networks:
+      net:
+        aliases:
+          - etcd
+
+  mongo:
+    image: mongo
+    container_name: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo-data/db:/data/db
+    networks:
+      net:
+        aliases:
+          - mongo
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    restart: always
+    depends_on:
+      - mongo
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
+    ports:
+      - "8081:8081"
+    networks:
+      net:
+        aliases:
+          - mongo-express
+
+networks:
+  net:
+    driver: bridge

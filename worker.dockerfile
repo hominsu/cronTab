@@ -8,7 +8,7 @@ RUN go env -w GOPROXY=https://goproxy.cn,direct
 WORKDIR /go/src/app
 COPY . .
 RUN go get -d -v ./...
-RUN go build -o /go/bin/app -v ./worker/main/main.go
+RUN go build -o /go/bin/app -v ./cmd/worker/main.go
 
 #final stage
 FROM alpine:latest
