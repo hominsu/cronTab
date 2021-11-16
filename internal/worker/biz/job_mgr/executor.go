@@ -6,6 +6,7 @@ import (
 	"cronTab/internal/worker/biz/job_lock"
 	"math/rand"
 	"os/exec"
+	"runtime"
 	"time"
 )
 
@@ -57,7 +58,13 @@ func (executor *Executor) ExecJob(info *cron_job.JobExecInfo) {
 			result.StartTime = time.Now()
 
 			// 执行 shell 命令
-			cmd := exec.CommandContext(info.CancelCtx, "/bin/bash", "-c", info.Job.Command)
+			cmd := &exec.Cmd{}
+
+			if runtime.GOOS == `Darwin` || runtime.GOOS == `Linux` {
+				cmd = exec.CommandContext(info.CancelCtx, "/bin/bash", "-c", info.Job.Command)
+			} else if runtime.GOOS == `windows` {
+				cmd = exec.CommandContext(info.CancelCtx, "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", info.Job.Command)
+			}
 
 			// 执行并捕获输出
 			output, err := cmd.CombinedOutput()
